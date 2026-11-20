@@ -18,6 +18,7 @@ import com.example.data.repository.BookContentMatch
 import com.example.data.repository.ImportOutcome
 import com.example.data.repository.LibraryRepository
 import com.example.data.repository.ReadingStreakSummary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -280,11 +282,12 @@ class LibraryViewModel(
             dailyReadingGoalMinutes = bundle.dailyGoalMinutes,
             readingSpeedWpm = bundle.readingSpeedWpm
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = LibraryUiState()
-    )
+    }.flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = LibraryUiState()
+        )
 
     init {
         viewModelScope.launch {

@@ -11,6 +11,11 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -22,7 +27,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Bookmark
-import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
@@ -65,11 +69,11 @@ import com.example.IncomingIntentRequest
 import com.example.R
 import com.example.data.reader.DocumentFormat
 import com.example.ui.screens.bookmarks.BookmarksNotesScreen
-import com.example.ui.screens.community.CommunityRouteScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.library.LibraryScreen
 import com.example.ui.screens.reader.ReaderScreen
 import com.example.ui.screens.settings.BackupRestoreScreen
+import com.example.ui.screens.settings.LegalDocumentScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.theme.MyBooksTheme
 import com.example.ui.viewmodel.LibraryEvent
@@ -89,13 +93,13 @@ data object LibraryRoute
 data object BookmarksNotesRoute
 
 @Serializable
-data object CommunityRoute
-
-@Serializable
 data object SettingsRoute
 
 @Serializable
 data object BackupRestoreRoute
+
+@Serializable
+data class LegalDocumentRoute(val isTerms: Boolean)
 
 @Serializable
 data class ReaderRoute(
@@ -117,7 +121,6 @@ private val TopDestinations = listOf(
     TopDestination(HomeRoute, HomeRoute::class, R.string.nav_home, Icons.Rounded.Home, "nav_home"),
     TopDestination(LibraryRoute, LibraryRoute::class, R.string.nav_library, Icons.AutoMirrored.Rounded.MenuBook, "nav_library"),
     TopDestination(BookmarksNotesRoute, BookmarksNotesRoute::class, R.string.nav_bookmarks, Icons.Rounded.Bookmark, "nav_bookmarks"),
-    TopDestination(CommunityRoute, CommunityRoute::class, R.string.nav_community, Icons.Rounded.Forum, "nav_community"),
     TopDestination(SettingsRoute, SettingsRoute::class, R.string.nav_settings, Icons.Rounded.Settings, "nav_settings")
 )
 
@@ -319,12 +322,28 @@ fun MyBooksApp(
                         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                             NavHost(
                                 navController = navController,
-                                startDestination = HomeRoute
+                                startDestination = HomeRoute,
+                                enterTransition = {
+                                    if (prefs.readerReducedAnimation) EnterTransition.None else fadeIn(animationSpec = tween(180))
+                                },
+                                exitTransition = {
+                                    if (prefs.readerReducedAnimation) ExitTransition.None else fadeOut(animationSpec = tween(140))
+                                },
+                                popEnterTransition = {
+                                    if (prefs.readerReducedAnimation) EnterTransition.None else fadeIn(animationSpec = tween(180))
+                                },
+                                popExitTransition = {
+                                    if (prefs.readerReducedAnimation) ExitTransition.None else fadeOut(animationSpec = tween(140))
+                                }
                             ) {
                                 composable<HomeRoute> {
                                     HomeScreen(
                                         state = libraryState,
                                         focusTimerState = focusTimerState,
+                                        currentLanguage = prefs.appLanguage,
+                                        onToggleLanguage = {
+                                            settingsViewModel.setLanguage(if (prefs.appLanguage == "bn") "en" else "bn")
+                                        },
                                         onImportClick = { importLauncher.launch(DocumentFormat.safPickerMimeTypes) },
                                         onOpenBook = { bookId ->
                                             navController.navigate(ReaderRoute(bookId = bookId))
@@ -413,19 +432,17 @@ fun MyBooksApp(
                                     )
                                 }
 
-                                composable<CommunityRoute> {
-                                    CommunityRouteScreen(
-                                        repository = container.communityRepository,
-                                        firebaseAuth = container.firebaseAuth,
-                                        isBangla = prefs.appLanguage == "bn"
-                                    )
-                                }
-
                                 composable<SettingsRoute> {
                                     SettingsScreen(
                                         viewModel = settingsViewModel,
                                         onOpenBackupRestore = {
                                             navController.navigate(BackupRestoreRoute)
+                                        },
+                                        onOpenPrivacyPolicy = {
+                                            navController.navigate(LegalDocumentRoute(isTerms = false))
+                                        },
+                                        onOpenTerms = {
+                                            navController.navigate(LegalDocumentRoute(isTerms = true))
                                         }
                                     )
                                 }
@@ -434,6 +451,14 @@ fun MyBooksApp(
                                     BackupRestoreScreen(
                                         viewModel = settingsViewModel,
                                         allBooks = libraryState.allBooks,
+                                        onBack = { navController.popBackStack() }
+                                    )
+                                }
+
+                                composable<LegalDocumentRoute> { backStackEntry ->
+                                    val route = backStackEntry.toRoute<LegalDocumentRoute>()
+                                    LegalDocumentScreen(
+                                        isTerms = route.isTerms,
                                         onBack = { navController.popBackStack() }
                                     )
                                 }
@@ -474,7 +499,7 @@ fun MyBooksApp(
 }
 
 private fun applyLocale(baseContext: Context, languageCode: String): Context {
-    val locale = Locale.forLanguageTag(if (languageCode == "en") "en" else "bn")
+    val locale = Locale.forLanguageTag(if (languageCode == "bn") "bn" else "en")
     Locale.setDefault(locale)
     val config = Configuration(baseContext.resources.configuration)
     config.setLocale(locale)

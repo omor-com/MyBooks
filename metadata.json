@@ -1,6 +1,6 @@
 {
   "name": "MyBooks",
-  "description": "Offline-first personal digital library, multi-format document reader, and book community app in Bangla and English.",
+  "description": "Offline-first personal digital library and multi-format document reader in English and Bangla, with Telegram community link in Settings.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

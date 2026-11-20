@@ -1,10 +1,10 @@
 # MyBooks
 
-**MyBooks** is an offline-first personal digital library and multi-format document reader for Android (Kotlin + Jetpack Compose + Material 3), developed by **Muhammed Omor**, with an optional authenticated **Community** hub powered by Firebase Auth (Google Sign-In) and Cloud Firestore.
+**MyBooks** is an offline-first personal digital library and multi-format document reader for Android (Kotlin + Jetpack Compose + Material 3), developed by **Muhammed Omor**, featuring full **English** & **বাংলা (Bangla)** bilingual support, complete in-app Privacy Policy & Terms & Conditions, and a direct **Telegram Community** link inside Settings.
 
 - **Application ID**: `com.mybooks.omor.dev`
-- **Default Language**: Bangla (`bn`), with instant in-app switching between **বাংলা** and **English**
-- **Offline Guarantee**: Importing, organizing, reading, bookmarking, highlighting, note-taking, preferences, and local ZIP Backup & Restore work 100% offline with zero login required.
+- **Default Language**: English (`en`), with instant 1-tap switching between **English** and **বাংলা (`bn`)** from the Home header or Settings
+- **Offline Guarantee**: Importing, organizing, reading, bookmarking, highlighting, note-taking, preferences, and local ZIP Backup & Restore work 100% offline with zero login or Firebase required.
 
 ---
 
@@ -21,30 +21,15 @@
 
 ## Architecture & Core Features
 
-- **5 Top-Level Tabs**: `Home`, `My Library`, `Bookmarks & Notes`, `Community`, `Settings`
+- **4 Top-Level Tabs**: `Home`, `My Library`, `Bookmarks & Notes`, `Settings`
+- **Instant Bilingual Experience**: English (`en`) is the default language, with a quick `বাংলা / English` toggle directly in the Home header and prominent language buttons at the top of Settings.
 - **Reader Enhancements**: Comfortable / Night / Study profiles, tap-zone presets (Standard, Left-Handed, Center, Off), paginated vs. continuous scroll modes, live **Focus Timer** with break reminders, **Offline TTS Read Aloud** with speed controls, and **Offline OCR** text copy & highlight on PDF/image pages.
 - **Library Productivity & Safety**: Reading Status tracking (`Want to Read`, `Currently Reading`, `Finished`), Collection edit/delete, **Soft-Delete Trash** with restore or permanent purge, Reading Goals & Streak tracking, full-text library search + history, and Markdown (`.md`) / JSON annotation exports.
 - **Backup & Restore (Inside Settings Only)**: Creates integrity-checked `.zip` v2 archives (`manifest.json` + SHA-256 checksums + `library_data.json` + reading sessions + covers/sound/files) supporting backward-compatible v1 restore, Metadata-Only / Selected Books / Full Library modes, path-traversal validation, and Duplicate Handling (`Skip`, `Keep Both`, `Update Matches`).
 - **Offline Page-Turn Sound**: Optionally downloads `bookreader-page-flip.mp3`, verifies MP3 frame integrity, and plays offline via `SoundPool` on discrete page/chapter turns (with re-download/repair support).
-- **Community & Moderation**:
-  - Gated **strictly inside the Community tab** using Android `CredentialManager` (`GetSignInWithGoogleOption` / `GetGoogleIdOption`).
-  - Supports text + emoji posts, post likes (`likeCount` backed by Firestore transactions), real-time post/author/book search, user blocking (`blocked_users` + Manage Blocked Users dialog), optional validated Google Drive links (`https://drive.google.com/...` or `https://docs.google.com/...`) with sharing disclaimer, Report Post & Report Profile, and bilingual Community Rules.
-  - Protected official administrator account (`muhammedomor.dev@gmail.com`) receives the red admin badge (`#BD081C`) and accesses **Admin Moderation** (review/dismiss reports, hide/restore posts, grant/revoke blue verified badges `#26A5E4`, restrict/unrestrict accounts, view immutable audit logs).
-
----
-
-## Firebase & Cloud Functions Setup
-
-1. Firestore project & named database are configured in `app/google-services.json`, `app/src/main/res/values/firebase_applet_config.xml`, `firestore.rules`, and `firestore.indexes.json`.
-2. Deploy composite indexes & security rules when updating backend configuration, and verify with the emulator test suite (`firestore.test.js`):
-   ```bash
-   firebase deploy --only firestore:rules,firestore:indexes
-   ```
-3. Optional Cloud Functions (`/functions/index.js`) require the Firebase Blaze plan to deploy `assignOfficialAdminClaim` (`beforeUserSignedIn` custom claim `{ admin: true }` + `/admins/{uid}`) and `syncAuthorBadgeToPosts`:
-   ```bash
-   cd functions && npm install && firebase deploy --only functions
-   ```
-   *(Note: `firestore.rules` already recognizes `request.auth.token.email == 'muhammedomor.dev@gmail.com'` with `email_verified == true` as an additional safeguarded check alongside custom claims and `/admins/{uid}`.)*
+- **Telegram Community & Legal Docs (Inside Settings)**:
+  - **Community Button**: Launches `https://t.me/+3Y-98ATTpaRhNjll` cleanly in the installed Telegram app or falls back to the default web browser.
+  - **Privacy Policy & Terms & Conditions**: Complete multi-section legal screens available directly inside Settings in both **English** and **বাংলা**.
 
 ---
 
@@ -58,10 +43,6 @@ You can build and download an installable APK directly on your Android phone wit
 4. Wait for the green checkmark (unit & Robolectric tests + `assembleDebug`).
 5. Scroll down to **Artifacts** on the workflow summary page and tap **MyBooks-Debug-APK** to download the `.zip` file.
 6. Open your phone's **Files** app, extract `app-debug.apk` from the downloaded `.zip`, and tap it to install (allow *"Install unknown apps"* for your Files/Browser app if prompted).
-
-### Optional Firebase / Google Sign-In in GitHub-Built APKs
-GitHub Actions builds cleanly even when `app/google-services.json` is omitted (all offline library/reader/backup features work immediately). To also enable **online Community & Google Sign-In** in APKs built on GitHub Actions, add a Repository Secret (`Settings → Secrets and variables → Actions`):
-- `GOOGLE_SERVICES_JSON`: paste the full JSON contents of `app/google-services.json`
 
 ### Signed Release APK Setup (`release-apk.yml`)
 To sign release APKs via GitHub Actions without committing keystores to Git:
@@ -77,8 +58,9 @@ To sign release APKs via GitHub Actions without committing keystores to Git:
 ## Privacy & Permissions
 
 - **Zero Broad Storage Permissions**: Never requests `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, or `MANAGE_EXTERNAL_STORAGE`. Uses Android **Storage Access Framework (SAF)** with persistable URI grants and Android **Photo Picker** for covers.
-- **Installed Permissions**: Only `INTERNET` and `ACCESS_NETWORK_STATE` (used strictly for the optional Community tab and downloading the optional page-turn sound).
-- **Support & Developer Links**:
+- **Minimal Permissions**: `INTERNET` & `ACCESS_NETWORK_STATE` are used only when manually downloading the optional page-turn sound MP3 or opening external links (Telegram Community, Developer Shop, Support Email).
+- **Community & Support Links**:
+  - Telegram Community: `https://t.me/+3Y-98ATTpaRhNjll`
   - Official Shop: [https://muhammedomor.supportkori.shop/](https://muhammedomor.supportkori.shop/)
   - Support Email: `muhammedomor.studio@gmail.com`
 

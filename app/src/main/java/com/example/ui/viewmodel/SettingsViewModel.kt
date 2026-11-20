@@ -23,6 +23,7 @@ import com.example.data.repository.ReadingStreakSummary
 import com.example.data.repository.StorageBreakdown
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.ReaderThemeMode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class StorageStats(
     val totalBooks: Int = 0,
@@ -109,11 +111,14 @@ class SettingsViewModel(
     fun refreshStorageStats() {
         viewModelScope.launch {
             libraryRepository.allBooksWithDetails.collect { list ->
+                val breakdown = withContext(Dispatchers.IO) {
+                    libraryRepository.calculateStorageBreakdown()
+                }
                 _storageStats.value = StorageStats(
                     totalBooks = list.size,
                     totalBookBytes = list.sumOf { it.book.fileSizeBytes },
                     missingFilesCount = list.count { it.book.isFileMissing },
-                    breakdown = libraryRepository.calculateStorageBreakdown()
+                    breakdown = breakdown
                 )
             }
         }
@@ -256,9 +261,12 @@ class SettingsViewModel(
 
     fun clearAppCache() {
         viewModelScope.launch {
-            libraryRepository.clearAppCache()
+            val breakdown = withContext(Dispatchers.IO) {
+                libraryRepository.clearAppCache()
+                libraryRepository.calculateStorageBreakdown()
+            }
             _storageStats.value = _storageStats.value.copy(
-                breakdown = libraryRepository.calculateStorageBreakdown()
+                breakdown = breakdown
             )
             _messages.emit("App cache cleared. Your books remain untouched.")
         }

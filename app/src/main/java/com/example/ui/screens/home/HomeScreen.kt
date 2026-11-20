@@ -27,11 +27,13 @@ import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +77,8 @@ import kotlin.math.roundToInt
 fun HomeScreen(
     state: LibraryUiState,
     focusTimerState: FocusTimerState,
+    currentLanguage: String,
+    onToggleLanguage: () -> Unit,
     onImportClick: () -> Unit,
     onOpenBook: (String) -> Unit,
     onNavigateToLibrary: () -> Unit,
@@ -93,7 +97,11 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            HomeBrandHeader(onImportClick = onImportClick)
+            HomeBrandHeader(
+                currentLanguage = currentLanguage,
+                onToggleLanguage = onToggleLanguage,
+                onImportClick = onImportClick
+            )
         }
 
         // Daily Reading Goal & Streak Card
@@ -382,48 +390,95 @@ private fun FocusTimerCompactCard(
 }
 
 @Composable
-private fun HomeBrandHeader(onImportClick: () -> Unit) {
+private fun HomeBrandHeader(
+    currentLanguage: String,
+    onToggleLanguage: () -> Unit,
+    onImportClick: () -> Unit
+) {
     val fontScale = LocalDensity.current.fontScale
+    val nextLangLabel = stringResource(
+        if (currentLanguage == "bn") R.string.action_switch_to_en else R.string.action_switch_to_bn
+    )
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("home_brand_header")
     ) {
-        val stackHeader = maxWidth < 330.dp || fontScale > 1.3f
+        val stackHeader = maxWidth < 400.dp || fontScale > 1.25f
         if (stackHeader) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 BrandIdentityRow(modifier = Modifier.fillMaxWidth())
-                FilledTonalButton(
-                    onClick = onImportClick,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .testTag("home_quick_add_button")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.action_add_book),
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    OutlinedButton(
+                        onClick = onToggleLanguage,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("home_language_toggle")
+                    ) {
+                        Icon(Icons.Rounded.Language, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = nextLangLabel,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = onImportClick,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("home_quick_add_button")
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.action_add_book),
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BrandIdentityRow(modifier = Modifier.weight(1f))
+                OutlinedButton(
+                    onClick = onToggleLanguage,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("home_language_toggle")
+                ) {
+                    Icon(Icons.Rounded.Language, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = nextLangLabel,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 FilledTonalButton(
                     onClick = onImportClick,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    modifier = Modifier.testTag("home_quick_add_button")
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("home_quick_add_button")
                 ) {
                     Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))

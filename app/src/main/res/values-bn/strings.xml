@@ -7,8 +7,9 @@
     <string name="nav_home">হোম</string>
     <string name="nav_library">আমার লাইব্রেরি</string>
     <string name="nav_bookmarks">বুকমার্ক ও নোট</string>
-    <string name="nav_community">কমিউনিটি</string>
     <string name="nav_settings">সেটিংস</string>
+    <string name="action_switch_to_bn">বাংলা</string>
+    <string name="action_switch_to_en">English</string>
 
     <!-- Common Actions -->
     <string name="action_add_book">বই যোগ করুন</string>
@@ -189,98 +190,12 @@
     <string name="bookmarks_select_book">বই নির্বাচন করুন (ঐচ্ছিক)</string>
     <string name="bookmarks_no_book_attached">সাধারণ নোট</string>
 
-    <!-- Community -->
-    <string name="community_title">MyBooks কমিউনিটি</string>
-    <string name="community_offline_title">আপনি অফলাইনে আছেন</string>
-    <string name="community_offline_subtitle">কমিউনিটি ব্যবহার করতে ইন্টারনেট সংযোগ প্রয়োজন। তবে আপনার লাইব্রেরি, বই, বুকমার্ক ও নোট অফলাইনেই কাজ করবে।</string>
-    <string name="community_unavailable_title">কমিউনিটি বর্তমানে উপলব্ধ নয়</string>
-    <string name="community_unavailable_subtitle">এই বিল্ডে অনলাইন কমিউনিটি কনফিগার করা হয়নি। তবে আপনার অফলাইন লাইব্রেরি, বই, বুকমার্ক ও নোট স্বাভাবিকভাবেই কাজ করবে।</string>
-    <string name="community_sign_in_title">বইপ্রেমীদের কমিউনিটিতে যোগ দিন</string>
-    <string name="community_sign_in_subtitle">বই নিয়ে আলোচনা করতে, ইমোজি ও টেক্সট পোস্ট করতে এবং ঐচ্ছিকভাবে Google Drive লিংক শেয়ার করতে Google দিয়ে সাইন ইন করুন। স্থানীয় বই পড়তে কোনো অ্যাকাউন্ট লাগে না।</string>
-    <string name="community_sign_in_button">Google দিয়ে সাইন ইন করুন</string>
-    <string name="community_sign_out">সাইন আউট</string>
-    <string name="community_create_post">নতুন পোস্ট লিখুন</string>
-    <string name="community_edit_post">পোস্ট সম্পাদনা</string>
-    <string name="community_delete_post_confirm_title">পোস্ট মুছবেন?</string>
-    <string name="community_delete_post_confirm_msg">এটি কমিউনিটি ফিড থেকে আপনার পোস্টটি স্থায়ীভাবে মুছে দেবে।</string>
-    <string name="community_post_hint">বই সম্পর্কে আপনার মতামত বা আলোচনা লিখুন (টেক্সট ও ইমোজি)…</string>
-    <string name="community_drive_link_hint">ঐচ্ছিক Google Drive লিংক (https://drive.google.com/…)</string>
-    <string name="community_book_title_hint">বইয়ের শিরোনাম (Drive বাটনে দেখাবে)</string>
-    <string name="community_book_title_required">Google Drive লিংক যুক্ত করলে অনুগ্রহ করে বইয়ের শিরোনাম লিখুন।</string>
-    <string name="community_drive_button_title">📖 %1$s</string>
-    <string name="community_drive_button_fallback">📖 শেয়ার করা বই খুলুন</string>
-    <string name="community_drive_link_disclaimer">ফাইল খোলার অনুমতি মূল মালিকের Google Drive শেয়ারিং সেটিংসের ওপর নির্ভর করে। MyBooks বাইরের ফাইল হোস্ট করে না।</string>
-    <string name="community_drive_link_invalid">অনুগ্রহ করে সঠিক https://drive.google.com/ অথবা https://docs.google.com/ লিংক দিন।</string>
-    <string name="community_publish_post">প্রকাশ করুন</string>
-    <string name="community_save_post">পরিবর্তন সংরক্ষণ</string>
-    <string name="community_empty_feed">এখনও কোনো পোস্ট নেই। প্রথম বই আলোচনা শুরু করুন!</string>
-    <string name="community_load_more">আরও পোস্ট দেখুন</string>
-    <string name="community_comments_title">মন্তব্য ও আলোচনা</string>
-    <string name="community_comments_action">মন্তব্য</string>
-    <string name="community_comment_hint">মন্তব্য লিখুন…</string>
-    <string name="community_reply_action">উত্তর দিন</string>
-    <string name="community_replying_to">%1$s-কে উত্তর দিচ্ছেন</string>
-    <string name="community_replies_show">%1$dটি উত্তর দেখুন</string>
-    <string name="community_replies_hide">উত্তর লুকান</string>
-    <string name="community_no_comments">এখনও কোনো মন্তব্য নেই। প্রথম মন্তব্য লিখুন!</string>
-    <string name="community_load_more_comments">আরও মন্তব্য দেখুন</string>
-    <string name="community_send_comment">পাঠান</string>
-    <string name="community_delete_comment_confirm">এই মন্তব্যটি মুছে ফেলবেন?</string>
-    <string name="community_rules_title">কমিউনিটি নীতিমালা</string>
-    <string name="community_rules_notice">সদস্যরা পোস্ট, মন্তব্য ও প্রোফাইল রিপোর্ট করতে পারেন এবং অ্যাডমিন তা পর্যালোচনা করবেন। নীতিমালা ভঙ্গ করলে অপসারণ বা অ্যাকাউন্ট ব্যবস্থা নেওয়া হতে পারে।</string>
-    <string name="community_profile_title">সদস্য প্রোফাইল</string>
-    <string name="community_profile_uid">ইউজার আইডি: %1$s</string>
-    <string name="community_profile_posts_title">সাম্প্রতিক পোস্ট</string>
-    <string name="community_profile_no_posts">এখনও কোনো পোস্ট নেই।</string>
-    <string name="community_report_post">পোস্ট রিপোর্ট করুন</string>
-    <string name="community_report_comment">মন্তব্য রিপোর্ট করুন</string>
-    <string name="community_report_profile">প্রোফাইল রিপোর্ট করুন</string>
-    <string name="community_report_reason">রিপোর্টের কারণ</string>
-    <string name="community_report_details_hint">বিস্তারিত তথ্য (ঐচ্ছিক)</string>
-    <string name="community_report_submitted">রিপোর্ট পর্যালোচনার জন্য পাঠানো হয়েছে।</string>
-    <string name="community_report_duplicate">আপনি ইতোমধ্যে এটি রিপোর্ট করেছেন।</string>
-    <string name="community_open_drive_link">Google Drive লিংক খুলুন</string>
-    <string name="community_restricted_banner">মডারেশনের কারণে আপনার কমিউনিটি পোস্ট করার সুবিধা সীমিত করা হয়েছে।</string>
-    <string name="community_status_active">সক্রিয়</string>
-    <string name="community_status_suspended">সাময়িক স্থগিত</string>
-    <string name="community_status_banned">নিষিদ্ধ</string>
-    <string name="community_status_deactivated">নিষ্ক্রিয়</string>
-    <string name="community_status_notice_suspended">আপনার কমিউনিটি অ্যাকাউন্ট সাময়িকভাবে স্থগিত। এই মুহূর্তে পোস্ট বা মন্তব্য করা যাবে না।</string>
-    <string name="community_status_notice_banned">মডারেশনের কারণে আপনার কমিউনিটি অ্যাকাউন্ট নিষিদ্ধ হয়েছে। আপনার অফলাইন লাইব্রেরি চালু রয়েছে।</string>
-    <string name="community_status_notice_deactivated">আপনার কমিউনিটি প্রোফাইল বর্তমানে নিষ্ক্রিয়। আপনার অফলাইন লাইব্রেরি চালু রয়েছে।</string>
-    <string name="community_status_reason_prefix">কারণ: %1$s</string>
-    <string name="community_admin_panel">অ্যাডমিন মডারেশন</string>
-    <string name="community_admin_reports">রিপোর্টসমূহ</string>
-    <string name="community_admin_users">সদস্য ও ব্যাজ</string>
-    <string name="community_admin_audit">অডিট ইতিহাস</string>
-    <string name="community_badge_admin">অফিসিয়াল অ্যাডমিন</string>
-    <string name="community_badge_verified">ভেরিফায়েড সদস্য</string>
-    <string name="community_grant_blue_badge">ব্লু ব্যাজ দিন</string>
-    <string name="community_revoke_blue_badge">ব্লু ব্যাজ সরান</string>
-    <string name="community_restrict_user">স্থগিত করুন</string>
-    <string name="community_ban_user">নিষিদ্ধ করুন</string>
-    <string name="community_deactivate_user">নিষ্ক্রিয় করুন</string>
-    <string name="community_unrestrict_user">সক্রিয় করুন</string>
-    <string name="community_hide_post">পোস্ট লুকান</string>
-    <string name="community_delete_post_admin">পোস্ট মুছুন</string>
-    <string name="community_restore_post">পোস্ট পুনঃস্থাপন</string>
-    <string name="community_hide_comment">মন্তব্য লুকান</string>
-    <string name="community_delete_comment_admin">মন্তব্য মুছুন</string>
-    <string name="community_restore_comment">মন্তব্য পুনঃস্থাপন</string>
-    <string name="community_moderation_confirm_title">মডারেশন নিশ্চিত করুন</string>
-    <string name="community_moderation_reason_hint">মডারেশনের কারণ / নোট (ঐচ্ছিক)</string>
-    <string name="community_mark_reviewed">পর্যালোচিত চিহ্নিত করুন</string>
-    <string name="community_dismiss_report">বাতিল করুন</string>
-
-    <!-- Report Reasons -->
-    <string name="reason_harassment">হয়রানি বা বুলিং</string>
-    <string name="reason_insults">অপমান বা উপহাস</string>
-    <string name="reason_spam">স্প্যাম বা অপ্রাসঙ্গিক প্রচার</string>
-    <string name="reason_malicious_link">ক্ষতিকর বা সন্দেহজনক লিংক</string>
-    <string name="reason_impersonation">ছদ্মবেশ ধারণ</string>
-    <string name="reason_harmful_content">ক্ষতিকর বা অপব্যবহারমূলক কনটেন্ট</string>
-    <string name="reason_unlawful_content">অবৈধ কনটেন্ট</string>
-    <string name="reason_other">অন্যান্য</string>
+    <!-- Telegram Community -->
+    <string name="settings_section_community">কমিউনিটি</string>
+    <string name="settings_telegram_community_title">MyBooks কমিউনিটিতে যোগ দিন (টেলিগ্রাম)</string>
+    <string name="settings_telegram_community_subtitle">পাঠকদের সাথে যুক্ত হোন, মতামত শেয়ার করুন এবং নতুন আপডেট পান। টেলিগ্রাম অ্যাপ থাকলে সরাসরি সেখানে, না থাকলে ডিফল্ট ব্রাউজারে খুলবে।</string>
+    <string name="settings_telegram_community_button">টেলিগ্রাম গ্রুপ খুলুন</string>
+    <string name="settings_telegram_open_failed">টেলিগ্রাম বা ব্রাউজার খোলা যায়নি। লিংক: https://t.me/+3Y-98ATTpaRhNjll</string>
 
     <!-- Settings -->
     <string name="settings_title">সেটিংস</string>
@@ -315,8 +230,8 @@
     <string name="settings_section_backup">ব্যাকআপ ও রিস্টোর</string>
     <string name="settings_backup_subtitle">লাইব্রেরির তথ্য, বুকমার্ক, নোট, সেটিংস ও বইয়ের ফাইল সংরক্ষণ বা পুনরুদ্ধার করুন</string>
 
-    <string name="settings_section_privacy">গোপনীয়তা ও নিরাপত্তা</string>
-    <string name="settings_privacy_summary">আপনার লাইব্রেরি, নোট, বুকমার্ক, পড়ার অবস্থান ও পছন্দসমূহ কেবল আপনার ডিভাইসেই সংরক্ষিত থাকে। কমিউনিটি ফিচার ঐচ্ছিক এবং আপনার ব্যক্তিগত বই বা পড়ার ইতিহাস কখনোই সার্ভারে আপলোড করে না।</string>
+    <string name="settings_section_privacy">প্রাইভেসি পলিসি ও শর্তাবলী</string>
+    <string name="settings_privacy_summary">আপনার লাইব্রেরি, বুকমার্ক, হাইলাইট, নোট, পাঠের সময় ও সেটিংস শতভাগ আপনার ডিভাইসেই সংরক্ষিত থাকে। কোনো অ্যাকাউন্ট, বিজ্ঞাপন বা ট্র্যাকিং নেই।</string>
 
     <string name="settings_section_developer">ডেভেলপার</string>
     <string name="settings_official_shop">ডেভেলপারের অফিসিয়াল শপ</string>
@@ -351,7 +266,7 @@
     <string name="backup_success_with_warnings">ব্যাকআপ তৈরি হয়েছে। %1$dটি অ্যাক্সেস-অযোগ্য ফাইল অন্তর্ভুক্ত করা যায়নি।</string>
     <string name="restore_success">রিস্টোর সম্পন্ন: %1$dটি বই, %2$dটি বুকমার্ক, %3$dটি নোট প্রক্রিয়াকৃত।</string>
     <string name="restore_invalid_archive">ত্রুটিপূর্ণ বা অনিরাপদ ব্যাকআপ আর্কাইভ। বর্তমান তথ্য অপরিবর্তিত আছে।</string>
-    <string name="backup_community_note">বিঃদ্রঃ: অনলাইন কমিউনিটি পোস্ট ও অ্যাকাউন্ট তথ্য স্থানীয় ব্যাকআপে অন্তর্ভুক্ত থাকে না।</string>
+    <string name="backup_community_note">বিঃদ্রঃ: ব্যাকআপ আপনার নির্বাচিত ZIP ফাইলে স্থানীয়ভাবে সংরক্ষিত হয় এবং SHA-256 চেকসাম দিয়ে সুরক্ষিত থাকে।</string>
 
     <!-- Reminders & Notifications -->
     <string name="reminder_notification_body">MyBooks-এ আপনার প্রতিদিনের পড়ার সময় হয়েছে।</string>
@@ -428,19 +343,36 @@
     <string name="settings_storage_breakdown_audio">অডিও ফাইল: %1$s</string>
     <string name="settings_last_backup_none">এখনও কোনো স্থানীয় ব্যাকআপ তৈরি হয়নি।</string>
     <string name="settings_last_backup_at">সর্বশেষ ব্যাকআপ: %1$s (%2$s)</string>
-    <string name="settings_privacy_dashboard">গোপনীয়তার বিস্তারিত দেখুন</string>
-    <string name="settings_privacy_dialog_title">গোপনীয়তা ও লোকাল-ফার্স্ট নিশ্চয়তা</string>
-    <string name="settings_privacy_dialog_body">MyBooks আপনার বই, কভার, অগ্রগতি, বুকমার্ক, নোট, হাইলাইট এবং পাঠের সময় শুধুমাত্র আপনার ডিভাইসে সংরক্ষণ করে। স্থানীয় বই পড়তে কোনো অ্যাকাউন্ট বা পিন/বায়োমেট্রিক লকের প্রয়োজন নেই। কমিউনিটি সম্পূর্ণ ঐচ্ছিক এবং Google দিয়ে সাইন ইন করলেই কেবল Firebase-এ যুক্ত হয়।</string>
+    <string name="settings_privacy_dashboard">প্রাইভেসি পলিসি (Privacy Policy)</string>
+    <string name="settings_terms_button">টার্মস অ্যান্ড কন্ডিশনস (Terms &amp; Conditions)</string>
+    <string name="settings_privacy_dialog_title">প্রাইভেসি পলিসি</string>
+    <string name="settings_privacy_dialog_body">MyBooks আপনার বই, কভার, অগ্রগতি, বুকমার্ক, নোট, হাইলাইট ও পাঠের সময় শুধুমাত্র আপনার ডিভাইসে সংরক্ষণ করে।</string>
 
-    <!-- Stage 5 Community -->
-    <string name="community_like_action">পছন্দ</string>
-    <string name="community_search_hint">পোস্ট বা সদস্য খুঁজুন</string>
-    <string name="community_block_user">ব্যবহারকারীকে ব্লক করুন</string>
-    <string name="community_unblock_user">আনব্লক করুন</string>
-    <string name="community_blocked_users_title">ব্লক করা ব্যবহারকারী</string>
-    <string name="community_blocked_users_empty">আপনি এখনও কাউকে ব্লক করেননি।</string>
-    <string name="community_block_confirm">%1$s-কে ব্লক করবেন? তার কোনো পোস্ট বা মন্তব্য আর দেখতে পাবেন না।</string>
-    <string name="community_user_blocked">ব্যবহারকারীকে ব্লক করা হয়েছে।</string>
-    <string name="community_user_unblocked">ব্যবহারকারীকে আনব্লক করা হয়েছে।</string>
-    <string name="community_search_no_results">কোনো পোস্ট বা সদস্য খুঁজে পাওয়া যায়নি।</string>
+    <!-- Full Privacy Policy & Terms Content -->
+    <string name="legal_effective_date">সর্বশেষ হালনাগাদ: নভেম্বর ২০২৬ • ডেভেলপার: Muhammed Omor</string>
+    <string name="privacy_policy_title">প্রাইভেসি পলিসি (Privacy Policy)</string>
+    <string name="privacy_s1_title">১. লোকাল-ফার্স্ট গোপনীয়তা (কোনো অ্যাকাউন্ট নয়)</string>
+    <string name="privacy_s1_body">MyBooks একটি শতভাগ অফলাইন-ফার্স্ট ব্যক্তিগত ডিজিটাল লাইব্রেরি অ্যাপ। আপনার ইম্পোর্ট করা বই, ডকুমেন্ট, কভার, পড়ার অগ্রগতি, ফোকাস সেশন, বুকমার্ক, হাইলাইট, নোট ও সকল সেটিংস শুধুমাত্র আপনার ডিভাইসে সংরক্ষিত থাকে। MyBooks কোনো ব্যক্তিগত প্রোফাইল, অ্যানালিটিক্স, বিজ্ঞাপন বা ব্যবহারকারীর আচরণ ট্র্যাক করে না।</string>
+    <string name="privacy_s2_title">২. ফাইল ও অনুমতির ব্যবহার</string>
+    <string name="privacy_s2_body">MyBooks কখনোই ডিভাইসের পূর্ণ স্টোরেজ অনুমতি (READ_EXTERNAL_STORAGE বা MANAGE_EXTERNAL_STORAGE) চায় না। বই বা কভার নির্বাচন করলে Android-এর Storage Access Framework (SAF) ও Photo Picker কেবল আপনার নির্বাচিত ফাইলটির অ্যাক্সেস দেয়। দৈনিক পড়ার রিমাইন্ডার চালু করলেই কেবল নোটিফিকেশন অনুমতি (POST_NOTIFICATIONS) চাওয়া হয়।</string>
+    <string name="privacy_s3_title">৩. অফলাইন OCR ও শুনে পড়া (TTS)</string>
+    <string name="privacy_s3_body">স্ক্যান করা পৃষ্ঠা থেকে লেখা শনাক্তকরণ (ML Kit লাতিন OCR) এবং টেক্সট-টু-স্পিচ (TTS) সম্পূর্ণভাবে আপনার ডিভাইসের ভেতরে অফলাইনে কাজ করে। কোনো বইয়ের লেখা বাইরে পাঠানো হয় না।</string>
+    <string name="privacy_s4_title">৪. ঐচ্ছিক নেটওয়ার্ক ও বাহ্যিক লিংক</string>
+    <string name="privacy_s4_body">ইন্টারনেট সংযোগ শুধুমাত্র তখনই ব্যবহৃত হয় যখন আপনি ঐচ্ছিকভাবে পৃষ্ঠা উল্টানোর সাউন্ড (MP3) ডাউনলোড করেন, অথবা নিজ ইচ্ছায় টেলিগ্রাম কমিউনিটি (https://t.me/+3Y-98ATTpaRhNjll), ডেভেলপার শপ বা সাপোর্ট ইমেইল বাটনে ট্যাপ করেন। বাহ্যিক লিংকগুলো টেলিগ্রাম অ্যাপ, ব্রাউজার বা ইমেইল অ্যাপে খোলে এবং সেগুলোর নিজস্ব প্রাইভেসি নীতিমালা প্রযোজ্য হয়।</string>
+    <string name="privacy_s5_title">৫. ব্যাকআপ, এক্সপোর্ট ও ডেটা নিয়ন্ত্রণ</string>
+    <string name="privacy_s5_body">আপনার তথ্যের পূর্ণ নিয়ন্ত্রণ আপনার হাতে। আপনি বই ট্র্যাশে সরাতে, স্থায়ীভাবে মুছতে, অ্যাপ ক্যাশ পরিষ্কার করতে, নোট/হাইলাইট Markdown বা JSON হিসেবে এক্সপোর্ট করতে এবং SHA-256 যাচাইকৃত স্থানীয় ZIP ব্যাকআপ তৈরি করতে পারবেন।</string>
+    <string name="privacy_s6_title">৬. ডেভেলপারের সাথে যোগাযোগ</string>
+    <string name="privacy_s6_body">গোপনীয়তা বা অ্যাপ সম্পর্কিত যেকোনো প্রশ্নে যোগাযোগ করুন: Muhammed Omor — muhammedomor.studio@gmail.com।</string>
+
+    <string name="terms_title">টার্মস অ্যান্ড কন্ডিশনস (Terms &amp; Conditions)</string>
+    <string name="terms_s1_title">১. শর্তাবলী গ্রহণ</string>
+    <string name="terms_s1_body">MyBooks অ্যাপটি ইনস্টল বা ব্যবহার করার মাধ্যমে আপনি এই শর্তাবলীতে সম্মত হচ্ছেন। শর্তাবলীতে সম্মত না হলে অনুগ্রহ করে অ্যাপটি ব্যবহার করা থেকে বিরত থাকুন।</string>
+    <string name="terms_s2_title">২. অনুমোদিত ব্যবহার ও ডকুমেন্টের দায়ভার</string>
+    <string name="terms_s2_body">MyBooks একটি ব্যক্তিগত ডকুমেন্ট পাঠক ও লাইব্রেরি ব্যবস্থাপক। আপনি যে PDF, EPUB, DOCX, কমিক বা ছবির ফাইলগুলো অ্যাপে যুক্ত বা এক্সপোর্ট করেন, সেগুলোর বৈধ অধিকার বা কপিরাইট অনুমতির সম্পূর্ণ দায়ভার ব্যবহারকারীর নিজস্ব।</string>
+    <string name="terms_s3_title">৩. অফলাইন সংরক্ষণ ও ব্যাকআপ</string>
+    <string name="terms_s3_body">সকল ডেটা আপনার ডিভাইসে স্থানীয়ভাবে সংরক্ষিত থাকায়, আগে থেকে ZIP ব্যাকআপ না রাখলে অ্যাপ আনইনস্টল বা ডেটা মুছে ফেললে লাইব্রেরির তথ্য হারিয়ে যেতে পারে। গুরুত্বপূর্ণ নোট ও বই নিয়মিত ব্যাকআপ রাখার পরামর্শ দেওয়া হচ্ছে।</string>
+    <string name="terms_s4_title">৪. টেলিগ্রাম কমিউনিটি ও বাহ্যিক সেবা</string>
+    <string name="terms_s4_body">MyBooks টেলিগ্রাম কমিউনিটি গ্রুপে যোগ দেওয়া বা বাহ্যিক লিংক ব্যবহার করা সম্পূর্ণ ঐচ্ছিক। কমিউনিটিতে শালীন আচরণ বজায় রাখা এবং কপিরাইট লঙ্ঘনকারী বা ক্ষতিকর কিছু শেয়ার না করার অনুরোধ করা হচ্ছে।</string>
+    <string name="terms_s5_title">৫. দায়মুক্তি ও মেধাস্বত্ব</string>
+    <string name="terms_s5_body">MyBooks কোনো নিরবচ্ছিন্ন সেবার নিশ্চয়তা ছাড়াই \"যেমন আছে\" ভিত্তিতে প্রদান করা হয়। MyBooks ব্র্যান্ড, ডিজাইন ও কোডের মেধাস্বত্ব Muhammed Omor-এর (© ২০২৬)। সহায়তার জন্য: muhammedomor.studio@gmail.com।</string>
 </resources>

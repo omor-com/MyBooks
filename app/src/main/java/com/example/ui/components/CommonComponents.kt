@@ -1,20 +1,16 @@
 package com.example.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MenuBook
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,20 +18,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.R
-import com.example.data.community.BadgeType
-import com.example.data.community.CommunityConstants
 import com.example.ui.theme.BrandGold
 import com.example.ui.theme.BrandPurpleDeep
 import com.example.ui.theme.BrandPurplePrimary
@@ -113,64 +102,6 @@ fun BookCoverThumbnail(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun VerifiedBadgeIcon(
-    badgeType: BadgeType,
-    modifier: Modifier = Modifier,
-    size: Dp = 18.dp
-) {
-    when (badgeType) {
-        BadgeType.RED_ADMIN -> {
-            Image(
-                painter = painterResource(id = R.drawable.ic_verified_badge_admin_red),
-                contentDescription = stringResource(R.string.community_badge_admin),
-                modifier = modifier.size(size)
-            )
-        }
-        BadgeType.BLUE -> {
-            Image(
-                painter = painterResource(id = R.drawable.ic_verified_badge_blue),
-                contentDescription = stringResource(R.string.community_badge_verified),
-                modifier = modifier.size(size)
-            )
-        }
-        BadgeType.NONE -> Unit
-    }
-}
-
-@Composable
-fun CommunityAvatar(
-    photoUrl: String?,
-    displayName: String,
-    isAdmin: Boolean = false,
-    size: Dp = 44.dp,
-    modifier: Modifier = Modifier
-) {
-    val resolvedUrl = photoUrl?.takeIf { it.isNotBlank() }
-        ?: if (isAdmin) CommunityConstants.OFFICIAL_ADMIN_AVATAR_URL else CommunityConstants.DEFAULT_USER_AVATAR_URL
-
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Person,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(size * 0.55f)
-        )
-        AsyncImage(
-            model = resolvedUrl,
-            contentDescription = displayName,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }
 

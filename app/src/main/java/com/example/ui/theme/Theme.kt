@@ -82,7 +82,7 @@ val MyBooksShapes = Shapes(
 @Composable
 fun MyBooksTheme(
     themeMode: AppThemeMode = AppThemeMode.SYSTEM,
-    isBangla: Boolean = true,
+    isBangla: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val systemDark = isSystemInDarkTheme()

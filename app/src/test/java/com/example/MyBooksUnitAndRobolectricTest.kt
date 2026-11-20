@@ -5,15 +5,12 @@ import android.net.Uri
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import android.content.res.Configuration
 import com.example.data.audio.PageTurnSoundManager
 import com.example.data.audio.SoundDownloadState
 import com.example.data.backup.BackupManager
 import com.example.data.backup.BackupMode
 import com.example.data.backup.DuplicatePolicy
-import com.example.data.community.BadgeType
-import com.example.data.community.CommunityConstants
-import com.example.data.community.CommunityLinkValidator
-import com.example.data.community.CommunityPost
 import com.example.data.local.MyBooksDatabase
 import com.example.data.local.entity.BookEntity
 import com.example.data.local.entity.CategoryEntity
@@ -56,6 +53,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -292,30 +290,41 @@ class MyBooksUnitAndRobolectricTest {
 
     @Test
     fun `preferences persist language and theme modes cleanly`() = runBlocking {
-        val initial = prefsRepo.preferencesFlow.first()
-        assertEquals("bn", initial.appLanguage)
+        val freshStore = PreferenceDataStoreFactory.create(
+            scope = this,
+            produceFile = { File(tempDir, "prefs_toggle_test.preferences_pb") }
+        )
+        val isolatedPrefs = UserPreferencesRepository(freshStore)
+        val initial = isolatedPrefs.preferencesFlow.first()
+        assertEquals("en", initial.appLanguage)
 
-        prefsRepo.setLanguage("en")
-        prefsRepo.setAppThemeMode(AppThemeMode.AMOLED)
-        prefsRepo.setKeepScreenOn(true)
+        isolatedPrefs.setLanguage("bn")
+        isolatedPrefs.setAppThemeMode(AppThemeMode.AMOLED)
+        isolatedPrefs.setKeepScreenOn(true)
 
-        val updated = prefsRepo.preferencesFlow.first()
-        assertEquals("en", updated.appLanguage)
+        val updated = isolatedPrefs.preferencesFlow.first()
+        assertEquals("bn", updated.appLanguage)
         assertEquals(AppThemeMode.AMOLED, updated.appThemeMode)
         assertTrue(updated.readerKeepScreenOn)
     }
 
     @Test
-    fun `community link validator and badge models enforce constraints`() {
-        assertTrue(CommunityLinkValidator.isValidOptionalDriveLink(""))
-        assertTrue(CommunityLinkValidator.isValidOptionalDriveLink("https://drive.google.com/file/d/12345/view"))
-        assertTrue(CommunityLinkValidator.isValidOptionalDriveLink("https://docs.google.com/document/d/abc/edit"))
-        assertFalse(CommunityLinkValidator.isValidOptionalDriveLink("http://drive.google.com/file/d/12345"))
-        assertFalse(CommunityLinkValidator.isValidOptionalDriveLink("https://evil.example.com/payload.exe"))
+    fun `bilingual privacy policy, terms and telegram community strings load cleanly in en and bn`() {
+        val enConfig = Configuration(context.resources.configuration).apply {
+            setLocale(Locale.ENGLISH)
+        }
+        val enCtx = context.createConfigurationContext(enConfig)
+        assertEquals("Privacy Policy", enCtx.getString(R.string.privacy_policy_title))
+        assertEquals("Terms & Conditions", enCtx.getString(R.string.terms_title))
+        assertTrue(enCtx.getString(R.string.privacy_s4_body).contains("https://t.me/+3Y-98ATTpaRhNjll"))
 
-        val post = CommunityPost(authorBadge = BadgeType.RED_ADMIN.firestoreValue)
-        assertEquals(BadgeType.RED_ADMIN, post.badge)
-        assertEquals("muhammedomor.dev@gmail.com", CommunityConstants.OFFICIAL_ADMIN_EMAIL)
+        val bnConfig = Configuration(context.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag("bn"))
+        }
+        val bnCtx = context.createConfigurationContext(bnConfig)
+        assertTrue(bnCtx.getString(R.string.privacy_policy_title).contains("প্রাইভেসি"))
+        assertTrue(bnCtx.getString(R.string.terms_title).contains("টার্মস"))
+        assertTrue(bnCtx.getString(R.string.privacy_s4_body).contains("https://t.me/+3Y-98ATTpaRhNjll"))
     }
 
     @Test
@@ -328,12 +337,6 @@ class MyBooksUnitAndRobolectricTest {
             .let { activity ->
                 assertNotNull(activity.window)
             }
-    }
-
-    @Test
-    fun `firebase availability guard does not crash when config is absent`() {
-        val result = runCatching { FirebaseAvailability.ensureInitialized(context) }
-        assertTrue(result.isSuccess)
     }
 
     @Test
@@ -795,13 +798,13 @@ class MyBooksUnitAndRobolectricTest {
     }
 
     @Test
-    fun `app enforces exclusions and keeps default language bn`() = runBlocking {
+    fun `app enforces exclusions and keeps default language en`() = runBlocking {
         val freshStore = PreferenceDataStoreFactory.create(
             scope = this,
             produceFile = { File(tempDir, "fresh_default_prefs.preferences_pb") }
         )
         val freshRepo = UserPreferencesRepository(freshStore)
-        assertEquals("bn", freshRepo.preferencesFlow.first().appLanguage)
+        assertEquals("en", freshRepo.preferencesFlow.first().appLanguage)
         assertFalse(context.resources.getString(R.string.app_name).contains("Lock", ignoreCase = true))
         val pinResId = context.resources.getIdentifier("pin_lock", "string", context.packageName)
         val bioResId = context.resources.getIdentifier("biometric_lock", "string", context.packageName)

@@ -7,8 +7,9 @@
     <string name="nav_home">Home</string>
     <string name="nav_library">My Library</string>
     <string name="nav_bookmarks">Bookmarks &amp; Notes</string>
-    <string name="nav_community">Community</string>
     <string name="nav_settings">Settings</string>
+    <string name="action_switch_to_bn">বাংলা</string>
+    <string name="action_switch_to_en">English</string>
 
     <!-- Common Actions -->
     <string name="action_add_book">Import Book</string>
@@ -189,98 +190,12 @@
     <string name="bookmarks_select_book">Select Book (optional)</string>
     <string name="bookmarks_no_book_attached">General Note</string>
 
-    <!-- Community -->
-    <string name="community_title">MyBooks Community</string>
-    <string name="community_offline_title">You are offline</string>
-    <string name="community_offline_subtitle">Community requires an internet connection. Your local library, books, bookmarks, and notes continue working offline.</string>
-    <string name="community_unavailable_title">Community Unavailable</string>
-    <string name="community_unavailable_subtitle">Online Community services are not configured in this build. Your offline library, books, bookmarks, and notes continue working normally.</string>
-    <string name="community_sign_in_title">Join the Book Community</string>
-    <string name="community_sign_in_subtitle">Sign in with Google to discuss books, share thoughts with emojis, and optionally post Google Drive links. Reading local books never requires an account.</string>
-    <string name="community_sign_in_button">Sign in with Google</string>
-    <string name="community_sign_out">Sign Out</string>
-    <string name="community_create_post">Write a Post</string>
-    <string name="community_edit_post">Edit Post</string>
-    <string name="community_delete_post_confirm_title">Delete Post?</string>
-    <string name="community_delete_post_confirm_msg">This will permanently remove your post from the Community feed.</string>
-    <string name="community_post_hint">Share book thoughts, reviews, or reading notes (text &amp; emojis)…</string>
-    <string name="community_drive_link_hint">Optional Google Drive link (https://drive.google.com/…)</string>
-    <string name="community_book_title_hint">Book Title (shown on Drive button)</string>
-    <string name="community_book_title_required">Please enter a book title when attaching a Google Drive link.</string>
-    <string name="community_drive_button_title">📖 %1$s</string>
-    <string name="community_drive_button_fallback">📖 Open Shared Book</string>
-    <string name="community_drive_link_disclaimer">Access depends on the owner\'s Google Drive sharing permissions. MyBooks does not host or verify external files.</string>
-    <string name="community_drive_link_invalid">Please enter a valid https://drive.google.com/ or https://docs.google.com/ link.</string>
-    <string name="community_publish_post">Publish</string>
-    <string name="community_save_post">Save Changes</string>
-    <string name="community_empty_feed">No posts yet. Start the first book discussion!</string>
-    <string name="community_load_more">Load More Posts</string>
-    <string name="community_comments_title">Comments &amp; Discussion</string>
-    <string name="community_comments_action">Comments</string>
-    <string name="community_comment_hint">Write a comment…</string>
-    <string name="community_reply_action">Reply</string>
-    <string name="community_replying_to">Replying to %1$s</string>
-    <string name="community_replies_show">View %1$d replies</string>
-    <string name="community_replies_hide">Hide replies</string>
-    <string name="community_no_comments">No comments yet. Be the first to reply!</string>
-    <string name="community_load_more_comments">Load More Comments</string>
-    <string name="community_send_comment">Send</string>
-    <string name="community_delete_comment_confirm">Delete this comment?</string>
-    <string name="community_rules_title">Community Rules</string>
-    <string name="community_rules_notice">Posts, comments, and profiles may be reported by members and reviewed by the administrator. Violations may result in removal or account moderation.</string>
-    <string name="community_profile_title">Member Profile</string>
-    <string name="community_profile_uid">User ID: %1$s</string>
-    <string name="community_profile_posts_title">Recent Posts</string>
-    <string name="community_profile_no_posts">No public posts yet.</string>
-    <string name="community_report_post">Report Post</string>
-    <string name="community_report_comment">Report Comment</string>
-    <string name="community_report_profile">Report Profile</string>
-    <string name="community_report_reason">Reason</string>
-    <string name="community_report_details_hint">Additional details (optional)</string>
-    <string name="community_report_submitted">Report submitted for moderation review.</string>
-    <string name="community_report_duplicate">You have already reported this item.</string>
-    <string name="community_open_drive_link">Open Google Drive Link</string>
-    <string name="community_restricted_banner">Your Community posting privileges are currently restricted by moderation.</string>
-    <string name="community_status_active">Active</string>
-    <string name="community_status_suspended">Suspended</string>
-    <string name="community_status_banned">Banned</string>
-    <string name="community_status_deactivated">Deactivated</string>
-    <string name="community_status_notice_suspended">Your Community account is suspended. You cannot post or comment right now.</string>
-    <string name="community_status_notice_banned">Your Community account has been banned by moderation. Local library features remain available.</string>
-    <string name="community_status_notice_deactivated">Your Community profile is currently deactivated. Local library features remain available.</string>
-    <string name="community_status_reason_prefix">Reason: %1$s</string>
-    <string name="community_admin_panel">Admin Moderation</string>
-    <string name="community_admin_reports">Reports</string>
-    <string name="community_admin_users">Members &amp; Badges</string>
-    <string name="community_admin_audit">Audit History</string>
-    <string name="community_badge_admin">Official Administrator</string>
-    <string name="community_badge_verified">Verified Member</string>
-    <string name="community_grant_blue_badge">Grant Blue Badge</string>
-    <string name="community_revoke_blue_badge">Revoke Blue Badge</string>
-    <string name="community_restrict_user">Suspend</string>
-    <string name="community_ban_user">Ban</string>
-    <string name="community_deactivate_user">Deactivate</string>
-    <string name="community_unrestrict_user">Activate</string>
-    <string name="community_hide_post">Hide Post</string>
-    <string name="community_delete_post_admin">Delete Post</string>
-    <string name="community_restore_post">Restore Post</string>
-    <string name="community_hide_comment">Hide Comment</string>
-    <string name="community_delete_comment_admin">Delete Comment</string>
-    <string name="community_restore_comment">Restore Comment</string>
-    <string name="community_moderation_confirm_title">Confirm Moderation Action</string>
-    <string name="community_moderation_reason_hint">Moderation reason / note (optional)</string>
-    <string name="community_mark_reviewed">Mark Reviewed</string>
-    <string name="community_dismiss_report">Dismiss</string>
-
-    <!-- Report Reasons -->
-    <string name="reason_harassment">Harassment or Bullying</string>
-    <string name="reason_insults">Insults or Mocking</string>
-    <string name="reason_spam">Spam or Self-Promotion</string>
-    <string name="reason_malicious_link">Suspicious or Malicious Link</string>
-    <string name="reason_impersonation">Impersonation</string>
-    <string name="reason_harmful_content">Abusive or Harmful Content</string>
-    <string name="reason_unlawful_content">Unlawful Content</string>
-    <string name="reason_other">Other</string>
+    <!-- Telegram Community -->
+    <string name="settings_section_community">Community</string>
+    <string name="settings_telegram_community_title">Join MyBooks Community (Telegram)</string>
+    <string name="settings_telegram_community_subtitle">Connect with readers, share feedback, and get updates. Opens in Telegram app or default browser.</string>
+    <string name="settings_telegram_community_button">Open Telegram Group</string>
+    <string name="settings_telegram_open_failed">Could not open Telegram or browser. Link: https://t.me/+3Y-98ATTpaRhNjll</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -315,8 +230,8 @@
     <string name="settings_section_backup">Backup &amp; Restore</string>
     <string name="settings_backup_subtitle">Export or restore library metadata, bookmarks, notes, preferences, and accessible book files</string>
 
-    <string name="settings_section_privacy">Privacy &amp; Security</string>
-    <string name="settings_privacy_summary">Your library database, notes, bookmarks, reading positions, and preferences stay strictly on your device. Community features are optional, require Google Sign-In, and never upload your private books or reading history.</string>
+    <string name="settings_section_privacy">Privacy Policy &amp; Terms</string>
+    <string name="settings_privacy_summary">Your library database, bookmarks, highlights, notes, reading sessions, and preferences stay 100% on your device. No account, no ads, and zero tracking.</string>
 
     <string name="settings_section_developer">Developer</string>
     <string name="settings_official_shop">Developer Official Shop</string>
@@ -351,7 +266,7 @@
     <string name="backup_success_with_warnings">Backup created. %1$d inaccessible file(s) could not be included.</string>
     <string name="restore_success">Restore complete: %1$d books, %2$d bookmarks, %3$d notes processed.</string>
     <string name="restore_invalid_archive">Invalid or unsafe backup archive. Existing data was not modified.</string>
-    <string name="backup_community_note">Note: Online Community posts and account profiles are not stored in local backups.</string>
+    <string name="backup_community_note">Note: Backups are stored locally in your chosen ZIP file and verified with SHA-256 checksums for safe transfer.</string>
 
     <!-- Reminders & Notifications -->
     <string name="reminder_notification_body">Time for your daily reading session in MyBooks.</string>
@@ -428,19 +343,36 @@
     <string name="settings_storage_breakdown_audio">Audio Assets: %1$s</string>
     <string name="settings_last_backup_none">No local backup recorded yet.</string>
     <string name="settings_last_backup_at">Last backup: %1$s (%2$s)</string>
-    <string name="settings_privacy_dashboard">View Privacy Details</string>
-    <string name="settings_privacy_dialog_title">Privacy &amp; Local-First Guarantee</string>
-    <string name="settings_privacy_dialog_body">MyBooks stores your imported books, covers, reading progress, bookmarks, notes, highlights, and reading sessions strictly on your device. No account or PIN/biometric lock is required to read your library. Community features are completely optional and only communicate with Firebase when you sign in with Google.</string>
+    <string name="settings_privacy_dashboard">Privacy Policy</string>
+    <string name="settings_terms_button">Terms &amp; Conditions</string>
+    <string name="settings_privacy_dialog_title">Privacy Policy</string>
+    <string name="settings_privacy_dialog_body">MyBooks stores your imported books, covers, progress, bookmarks, notes, highlights, and reading sessions strictly on your device.</string>
 
-    <!-- Stage 5 Community -->
-    <string name="community_like_action">Like</string>
-    <string name="community_search_hint">Search posts or members</string>
-    <string name="community_block_user">Block User</string>
-    <string name="community_unblock_user">Unblock</string>
-    <string name="community_blocked_users_title">Blocked Users</string>
-    <string name="community_blocked_users_empty">You haven\'t blocked anyone.</string>
-    <string name="community_block_confirm">Block %1$s? You will no longer see their posts or comments.</string>
-    <string name="community_user_blocked">User blocked. Their posts and comments are now hidden.</string>
-    <string name="community_user_unblocked">User unblocked.</string>
-    <string name="community_search_no_results">No matching posts or members found.</string>
+    <!-- Full Privacy Policy & Terms Content -->
+    <string name="legal_effective_date">Last updated: November 2026 • Developer: Muhammed Omor</string>
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="privacy_s1_title">1. Local-First Privacy (Zero Account Required)</string>
+    <string name="privacy_s1_body">MyBooks is built as a 100% offline-first personal digital library. All books, documents, covers, reading progress, focus sessions, bookmarks, highlights, notes, and preferences are stored strictly locally on your device. MyBooks does not collect personal profiles, analytics, telemetry, crash tracking, or advertising identifiers.</string>
+    <string name="privacy_s2_title">2. File &amp; Permission Access</string>
+    <string name="privacy_s2_body">MyBooks never requests broad device storage permissions (such as READ_EXTERNAL_STORAGE or MANAGE_EXTERNAL_STORAGE). When you import documents or choose book covers, Android\'s Storage Access Framework (SAF) and Photo Picker grant access only to the specific files you select. Notification permission (POST_NOTIFICATIONS) is requested only if you enable Daily Reading Reminders.</string>
+    <string name="privacy_s3_title">3. Offline OCR &amp; Read Aloud (TTS)</string>
+    <string name="privacy_s3_body">On-device text recognition (ML Kit Latin OCR) and Text-to-Speech (TTS) process pages locally on your device. Document contents and recognized text are never transmitted to external servers.</string>
+    <string name="privacy_s4_title">4. Optional Network Features &amp; External Links</string>
+    <string name="privacy_s4_body">Internet permission is used solely when you manually choose to download the optional page-turn sound MP3, or when you tap external links such as our Telegram Community group (https://t.me/+3Y-98ATTpaRhNjll), Official Developer Shop, or Support Email. Opening external links takes you to Telegram, your web browser, or your email app, which are governed by their own privacy policies.</string>
+    <string name="privacy_s5_title">5. Local Backups, Exports &amp; Data Control</string>
+    <string name="privacy_s5_body">You remain in full control of your data. You can move books to Trash, permanently delete items, clear app cache, export notes/highlights as Markdown or JSON, or create SHA-256 verified ZIP backups stored strictly where you choose.</string>
+    <string name="privacy_s6_title">6. Contact Developer</string>
+    <string name="privacy_s6_body">For privacy questions or support requests, contact Muhammed Omor at muhammedomor.studio@gmail.com.</string>
+
+    <string name="terms_title">Terms &amp; Conditions</string>
+    <string name="terms_s1_title">1. Acceptance of Terms</string>
+    <string name="terms_s1_body">By installing or using MyBooks, you agree to these Terms &amp; Conditions. If you do not agree, please discontinue using the application.</string>
+    <string name="terms_s2_title">2. Permitted Use &amp; Document Responsibility</string>
+    <string name="terms_s2_body">MyBooks is a personal document organizer and reader. You are solely responsible for all PDF, EPUB, DOCX, comic, or image files you import, read, or export, including ensuring you hold the lawful rights or permissions to use those files.</string>
+    <string name="terms_s3_title">3. Offline Storage &amp; Backups</string>
+    <string name="terms_s3_body">Because all library records reside locally on your device, uninstalling the app or clearing app data may permanently remove local databases unless you save a ZIP backup beforehand. External document links depend on original file availability unless copied into backups.</string>
+    <string name="terms_s4_title">4. Telegram Community &amp; External Services</string>
+    <string name="terms_s4_body">Joining the MyBooks Telegram Community or visiting external links is completely optional. Please follow respectful conduct and avoid sharing unlawful or copyright-infringing material inside community spaces.</string>
+    <string name="terms_s5_title">5. Disclaimer &amp; Intellectual Property</string>
+    <string name="terms_s5_body">MyBooks is provided \"as is\" without warranties of uninterrupted availability. The MyBooks brand, interface design, and source code remain the intellectual property of Muhammed Omor (© 2026). Support inquiries: muhammedomor.studio@gmail.com.</string>
 </resources>

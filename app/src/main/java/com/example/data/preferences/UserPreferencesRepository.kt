@@ -46,7 +46,7 @@ enum class ReadingProfilePreset {
 
 @Serializable
 data class UserPreferences(
-    val appLanguage: String = "bn",
+    val appLanguage: String = "en",
     val appThemeModeName: String = AppThemeMode.SYSTEM.name,
     val readerThemeModeName: String = ReaderThemeMode.LIGHT.name,
     val readerFontSizeSp: Float = 18f,
@@ -140,7 +140,7 @@ class UserPreferencesRepository(
         }
         .map { prefs ->
             UserPreferences(
-                appLanguage = prefs[Keys.APP_LANGUAGE] ?: "bn",
+                appLanguage = prefs[Keys.APP_LANGUAGE] ?: "en",
                 appThemeModeName = prefs[Keys.APP_THEME_MODE] ?: AppThemeMode.SYSTEM.name,
                 readerThemeModeName = prefs[Keys.READER_THEME_MODE] ?: ReaderThemeMode.LIGHT.name,
                 readerFontSizeSp = (prefs[Keys.READER_FONT_SIZE] ?: 18f).coerceIn(12f, 32f),
@@ -346,7 +346,7 @@ class UserPreferencesRepository(
 
     suspend fun restoreFromBackup(prefs: UserPreferences, soundFileExists: Boolean) {
         dataStore.edit {
-            it[Keys.APP_LANGUAGE] = if (prefs.appLanguage == "en") "en" else "bn"
+            it[Keys.APP_LANGUAGE] = if (prefs.appLanguage == "bn") "bn" else "en"
             it[Keys.APP_THEME_MODE] = prefs.appThemeMode.name
             it[Keys.READER_THEME_MODE] = prefs.readerThemeMode.name
             it[Keys.READER_FONT_SIZE] = prefs.readerFontSizeSp.coerceIn(12f, 32f)

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,16 +22,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.Gavel
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Storage
@@ -39,6 +45,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,10 +62,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -85,6 +90,8 @@ import java.util.Locale
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onOpenBackupRestore: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
+    onOpenTerms: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -97,7 +104,6 @@ fun SettingsScreen(
     val streakSummary by viewModel.streakSummary.collectAsStateWithLifecycle()
     val sessions by viewModel.readingSessions.collectAsStateWithLifecycle()
     val focusTimerState by viewModel.focusTimerState.collectAsStateWithLifecycle()
-    var showPrivacyDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { msg ->
@@ -125,12 +131,75 @@ fun SettingsScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Appearance & Language
+            // Language & Appearance (Prominent Quick Language Switch)
             item {
                 SettingsSectionCard(
                     icon = Icons.Rounded.Palette,
                     title = stringResource(R.string.settings_section_appearance)
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Rounded.Language, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(
+                            text = stringResource(R.string.settings_language),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val isEn = prefs.appLanguage != "bn"
+                        if (isEn) {
+                            FilledTonalButton(
+                                onClick = { viewModel.setLanguage("en") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
+                                    .testTag("settings_lang_en")
+                            ) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.settings_language_en), maxLines = 1)
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.setLanguage("bn") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
+                                    .testTag("settings_lang_bn")
+                            ) {
+                                Text(stringResource(R.string.settings_language_bn), maxLines = 1)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { viewModel.setLanguage("en") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
+                                    .testTag("settings_lang_en")
+                            ) {
+                                Text(stringResource(R.string.settings_language_en), maxLines = 1)
+                            }
+                            FilledTonalButton(
+                                onClick = { viewModel.setLanguage("bn") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
+                                    .testTag("settings_lang_bn")
+                            ) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.settings_language_bn), maxLines = 1)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+
                     Text(stringResource(R.string.settings_theme_mode), style = MaterialTheme.typography.labelLarge)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                         listOf(
@@ -146,34 +215,6 @@ fun SettingsScreen(
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                    }
-
-                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Rounded.Language, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.labelLarge)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        FilterChip(
-                            selected = prefs.appLanguage == "bn",
-                            onClick = { viewModel.setLanguage("bn") },
-                            label = { Text(stringResource(R.string.settings_language_bn)) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("settings_lang_bn")
-                        )
-                        FilterChip(
-                            selected = prefs.appLanguage == "en",
-                            onClick = { viewModel.setLanguage("en") },
-                            label = { Text(stringResource(R.string.settings_language_en)) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("settings_lang_en")
-                        )
                     }
                 }
             }
@@ -475,7 +516,53 @@ fun SettingsScreen(
                 }
             }
 
-            // Privacy Dashboard (No PIN or Biometric Lock)
+            // Telegram Community
+            item {
+                SettingsSectionCard(
+                    icon = Icons.Rounded.Forum,
+                    title = stringResource(R.string.settings_section_community)
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_telegram_community_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_telegram_community_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(
+                        onClick = {
+                            val telegramIntent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://t.me/+3Y-98ATTpaRhNjll")
+                            ).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            try {
+                                context.startActivity(telegramIntent)
+                            } catch (_: ActivityNotFoundException) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        context.getString(R.string.settings_telegram_open_failed)
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("settings_telegram_community_button")
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.settings_telegram_community_button))
+                    }
+                }
+            }
+
+            // Privacy Policy & Terms (No PIN or Biometric Lock)
             item {
                 SettingsSectionCard(
                     icon = Icons.Rounded.Security,
@@ -487,10 +574,26 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     OutlinedButton(
-                        onClick = { showPrivacyDialog = true },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = onOpenPrivacyPolicy,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("settings_privacy_policy_button")
                     ) {
+                        Icon(Icons.Rounded.PrivacyTip, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.settings_privacy_dashboard))
+                    }
+                    OutlinedButton(
+                        onClick = onOpenTerms,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("settings_terms_button")
+                    ) {
+                        Icon(Icons.Rounded.Gavel, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.settings_terms_button))
                     }
                 }
             }
@@ -559,9 +662,5 @@ fun SettingsScreen(
                 }
             }
         }
-    }
-
-    if (showPrivacyDialog) {
-        PrivacyDetailsDialog(onDismiss = { showPrivacyDialog = false })
     }
 }

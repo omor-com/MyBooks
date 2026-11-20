@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -349,23 +348,4 @@ internal fun ReadingProductivitySection(
             }
         }
     }
-}
-
-@Composable
-internal fun PrivacyDetailsDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_privacy_dialog_title)) },
-        text = {
-            Text(
-                text = stringResource(R.string.settings_privacy_dialog_body),
-                style = MaterialTheme.typography.bodyMedium
-            )
-        },
-        confirmButton = {
-            Button(onClick = onDismiss) {
-                Text(stringResource(R.string.action_close))
-            }
-        }
-    )
 }
