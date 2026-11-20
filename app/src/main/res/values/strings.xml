@@ -195,7 +195,7 @@
     <string name="settings_telegram_community_title">Join MyBooks Community (Telegram)</string>
     <string name="settings_telegram_community_subtitle">Connect with readers, share feedback, and get updates. Opens in Telegram app or default browser.</string>
     <string name="settings_telegram_community_button">Open Telegram Group</string>
-    <string name="settings_telegram_open_failed">Could not open Telegram or browser. Link: https://t.me/+3Y-98ATTpaRhNjll</string>
+    <string name="settings_telegram_open_failed">Could not open Telegram or browser. Link: https://t.me/MyBooksCommunity</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -358,7 +358,7 @@
     <string name="privacy_s3_title">3. Offline OCR &amp; Read Aloud (TTS)</string>
     <string name="privacy_s3_body">On-device text recognition (ML Kit Latin OCR) and Text-to-Speech (TTS) process pages locally on your device. Document contents and recognized text are never transmitted to external servers.</string>
     <string name="privacy_s4_title">4. Optional Network Features &amp; External Links</string>
-    <string name="privacy_s4_body">Internet permission is used solely when you manually choose to download the optional page-turn sound MP3, or when you tap external links such as our Telegram Community group (https://t.me/+3Y-98ATTpaRhNjll), Official Developer Shop, or Support Email. Opening external links takes you to Telegram, your web browser, or your email app, which are governed by their own privacy policies.</string>
+    <string name="privacy_s4_body">Internet permission is used solely when you manually choose to download the optional page-turn sound MP3, or when you tap external links such as our Telegram Community group (https://t.me/MyBooksCommunity), Official Developer Shop, or Support Email. Opening external links takes you to Telegram, your web browser, or your email app, which are governed by their own privacy policies.</string>
     <string name="privacy_s5_title">5. Local Backups, Exports &amp; Data Control</string>
     <string name="privacy_s5_body">You remain in full control of your data. You can move books to Trash, permanently delete items, clear app cache, export notes/highlights as Markdown or JSON, or create SHA-256 verified ZIP backups stored strictly where you choose.</string>
     <string name="privacy_s6_title">6. Contact Developer</string>

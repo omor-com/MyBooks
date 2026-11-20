@@ -316,7 +316,7 @@ class MyBooksUnitAndRobolectricTest {
         val enCtx = context.createConfigurationContext(enConfig)
         assertEquals("Privacy Policy", enCtx.getString(R.string.privacy_policy_title))
         assertEquals("Terms & Conditions", enCtx.getString(R.string.terms_title))
-        assertTrue(enCtx.getString(R.string.privacy_s4_body).contains("https://t.me/+3Y-98ATTpaRhNjll"))
+        assertTrue(enCtx.getString(R.string.privacy_s4_body).contains("https://t.me/MyBooksCommunity"))
 
         val bnConfig = Configuration(context.resources.configuration).apply {
             setLocale(Locale.forLanguageTag("bn"))
@@ -324,7 +324,7 @@ class MyBooksUnitAndRobolectricTest {
         val bnCtx = context.createConfigurationContext(bnConfig)
         assertTrue(bnCtx.getString(R.string.privacy_policy_title).contains("প্রাইভেসি"))
         assertTrue(bnCtx.getString(R.string.terms_title).contains("টার্মস"))
-        assertTrue(bnCtx.getString(R.string.privacy_s4_body).contains("https://t.me/+3Y-98ATTpaRhNjll"))
+        assertTrue(bnCtx.getString(R.string.privacy_s4_body).contains("https://t.me/MyBooksCommunity"))
     }
 
     @Test

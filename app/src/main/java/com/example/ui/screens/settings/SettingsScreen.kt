@@ -536,7 +536,7 @@ fun SettingsScreen(
                         onClick = {
                             val telegramIntent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://t.me/+3Y-98ATTpaRhNjll")
+                                Uri.parse("https://t.me/MyBooksCommunity")
                             ).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }

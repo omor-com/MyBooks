@@ -195,7 +195,7 @@
     <string name="settings_telegram_community_title">MyBooks কমিউনিটিতে যোগ দিন (টেলিগ্রাম)</string>
     <string name="settings_telegram_community_subtitle">পাঠকদের সাথে যুক্ত হোন, মতামত শেয়ার করুন এবং নতুন আপডেট পান। টেলিগ্রাম অ্যাপ থাকলে সরাসরি সেখানে, না থাকলে ডিফল্ট ব্রাউজারে খুলবে।</string>
     <string name="settings_telegram_community_button">টেলিগ্রাম গ্রুপ খুলুন</string>
-    <string name="settings_telegram_open_failed">টেলিগ্রাম বা ব্রাউজার খোলা যায়নি। লিংক: https://t.me/+3Y-98ATTpaRhNjll</string>
+    <string name="settings_telegram_open_failed">টেলিগ্রাম বা ব্রাউজার খোলা যায়নি। লিংক: https://t.me/MyBooksCommunity</string>
 
     <!-- Settings -->
     <string name="settings_title">সেটিংস</string>
@@ -358,7 +358,7 @@
     <string name="privacy_s3_title">৩. অফলাইন OCR ও শুনে পড়া (TTS)</string>
     <string name="privacy_s3_body">স্ক্যান করা পৃষ্ঠা থেকে লেখা শনাক্তকরণ (ML Kit লাতিন OCR) এবং টেক্সট-টু-স্পিচ (TTS) সম্পূর্ণভাবে আপনার ডিভাইসের ভেতরে অফলাইনে কাজ করে। কোনো বইয়ের লেখা বাইরে পাঠানো হয় না।</string>
     <string name="privacy_s4_title">৪. ঐচ্ছিক নেটওয়ার্ক ও বাহ্যিক লিংক</string>
-    <string name="privacy_s4_body">ইন্টারনেট সংযোগ শুধুমাত্র তখনই ব্যবহৃত হয় যখন আপনি ঐচ্ছিকভাবে পৃষ্ঠা উল্টানোর সাউন্ড (MP3) ডাউনলোড করেন, অথবা নিজ ইচ্ছায় টেলিগ্রাম কমিউনিটি (https://t.me/+3Y-98ATTpaRhNjll), ডেভেলপার শপ বা সাপোর্ট ইমেইল বাটনে ট্যাপ করেন। বাহ্যিক লিংকগুলো টেলিগ্রাম অ্যাপ, ব্রাউজার বা ইমেইল অ্যাপে খোলে এবং সেগুলোর নিজস্ব প্রাইভেসি নীতিমালা প্রযোজ্য হয়।</string>
+    <string name="privacy_s4_body">ইন্টারনেট সংযোগ শুধুমাত্র তখনই ব্যবহৃত হয় যখন আপনি ঐচ্ছিকভাবে পৃষ্ঠা উল্টানোর সাউন্ড (MP3) ডাউনলোড করেন, অথবা নিজ ইচ্ছায় টেলিগ্রাম কমিউনিটি (https://t.me/MyBooksCommunity), ডেভেলপার শপ বা সাপোর্ট ইমেইল বাটনে ট্যাপ করেন। বাহ্যিক লিংকগুলো টেলিগ্রাম অ্যাপ, ব্রাউজার বা ইমেইল অ্যাপে খোলে এবং সেগুলোর নিজস্ব প্রাইভেসি নীতিমালা প্রযোজ্য হয়।</string>
     <string name="privacy_s5_title">৫. ব্যাকআপ, এক্সপোর্ট ও ডেটা নিয়ন্ত্রণ</string>
     <string name="privacy_s5_body">আপনার তথ্যের পূর্ণ নিয়ন্ত্রণ আপনার হাতে। আপনি বই ট্র্যাশে সরাতে, স্থায়ীভাবে মুছতে, অ্যাপ ক্যাশ পরিষ্কার করতে, নোট/হাইলাইট Markdown বা JSON হিসেবে এক্সপোর্ট করতে এবং SHA-256 যাচাইকৃত স্থানীয় ZIP ব্যাকআপ তৈরি করতে পারবেন।</string>
     <string name="privacy_s6_title">৬. ডেভেলপারের সাথে যোগাযোগ</string>

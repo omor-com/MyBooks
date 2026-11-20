@@ -28,7 +28,7 @@
 - **Backup & Restore (Inside Settings Only)**: Creates integrity-checked `.zip` v2 archives (`manifest.json` + SHA-256 checksums + `library_data.json` + reading sessions + covers/sound/files) supporting backward-compatible v1 restore, Metadata-Only / Selected Books / Full Library modes, path-traversal validation, and Duplicate Handling (`Skip`, `Keep Both`, `Update Matches`).
 - **Offline Page-Turn Sound**: Optionally downloads `bookreader-page-flip.mp3`, verifies MP3 frame integrity, and plays offline via `SoundPool` on discrete page/chapter turns (with re-download/repair support).
 - **Telegram Community & Legal Docs (Inside Settings)**:
-  - **Community Button**: Launches `https://t.me/+3Y-98ATTpaRhNjll` cleanly in the installed Telegram app or falls back to the default web browser.
+  - **Community Button**: Launches `https://t.me/MyBooksCommunity` cleanly in the installed Telegram app or falls back to the default web browser.
   - **Privacy Policy & Terms & Conditions**: Complete multi-section legal screens available directly inside Settings in both **English** and **বাংলা**.
 
 ---
@@ -60,7 +60,7 @@ To sign release APKs via GitHub Actions without committing keystores to Git:
 - **Zero Broad Storage Permissions**: Never requests `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, or `MANAGE_EXTERNAL_STORAGE`. Uses Android **Storage Access Framework (SAF)** with persistable URI grants and Android **Photo Picker** for covers.
 - **Minimal Permissions**: `INTERNET` & `ACCESS_NETWORK_STATE` are used only when manually downloading the optional page-turn sound MP3 or opening external links (Telegram Community, Developer Shop, Support Email).
 - **Community & Support Links**:
-  - Telegram Community: `https://t.me/+3Y-98ATTpaRhNjll`
+  - Telegram Community: `https://t.me/MyBooksCommunity`
   - Official Shop: [https://muhammedomor.supportkori.shop/](https://muhammedomor.supportkori.shop/)
   - Support Email: `muhammedomor.studio@gmail.com`
 
