@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "459261361781",
+    "project_id": "android-my-books",
+    "storage_bucket": "android-my-books.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:459261361781:android:bbaf933e922fea1068423c",
+        "android_client_info": {
+          "package_name": "com.mybooks.omor.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsMCldU0YFLL4qVM4N-EUA44C_jE3kg7s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

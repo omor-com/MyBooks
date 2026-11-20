@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "CommunityUser": {
+      "title": "CommunityUser",
+      "description": "Public Community user profile without private PII.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID matching document ID." },
+        "displayName": { "type": "string", "description": "Display name (1..60 chars)." },
+        "photoUrl": { "type": "string", "description": "Profile avatar URL." },
+        "bio": { "type": "string", "description": "Optional short bio (0..300 chars)." },
+        "badgeType": {
+          "type": "string",
+          "enum": ["none", "blue", "red_admin"],
+          "description": "Server/admin-controlled verification badge."
+        },
+        "restricted": { "type": "boolean", "description": "Whether user posting is restricted by admin." },
+        "restrictionReason": { "type": "string", "description": "Optional admin restriction reason." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["uid", "displayName", "photoUrl", "badgeType", "restricted", "createdAt", "updatedAt"]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Server-provisioned administrator marker document.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "Text-and-emoji Community discussion post with optional Google Drive link.",
+      "type": "object",
+      "properties": {
+        "authorUid": { "type": "string", "description": "Firebase Auth UID of post author." },
+        "authorName": { "type": "string", "description": "Author display name." },
+        "authorPhotoUrl": { "type": "string", "description": "Author avatar URL." },
+        "authorBadge": {
+          "type": "string",
+          "enum": ["none", "blue", "red_admin"],
+          "description": "Verified badge matching author profile at creation."
+        },
+        "content": { "type": "string", "description": "Post text and emojis (1..2000 chars)." },
+        "driveLink": { "type": "string", "description": "Optional validated Google Drive/Docs HTTPS URL." },
+        "visibility": {
+          "type": "string",
+          "enum": ["visible", "hidden", "removed"],
+          "description": "Moderation visibility state."
+        },
+        "moderationNote": { "type": "string", "description": "Optional admin moderation note." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["authorUid", "authorName", "authorPhotoUrl", "authorBadge", "content", "visibility", "createdAt", "updatedAt"]
+    },
+    "CommunityReport": {
+      "title": "CommunityReport",
+      "description": "User-submitted report against a post or profile.",
+      "type": "object",
+      "properties": {
+        "reporterUid": { "type": "string", "description": "UID of reporting user." },
+        "targetType": { "type": "string", "enum": ["post", "profile"] },
+        "targetId": { "type": "string", "description": "Reported post ID or user UID." },
+        "targetSummary": { "type": "string", "description": "Optional summary snippet." },
+        "reason": {
+          "type": "string",
+          "enum": ["harassment", "insults", "spam", "malicious_link", "impersonation", "harmful_content", "unlawful_content", "other"]
+        },
+        "details": { "type": "string", "description": "Optional explanation (0..500 chars)." },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "reviewed", "action_taken", "dismissed"]
+        },
+        "reviewedBy": { "type": "string", "description": "Admin UID that reviewed the report." },
+        "moderationAction": { "type": "string", "description": "Action taken by admin." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterUid", "targetType", "targetId", "reason", "status", "createdAt", "updatedAt"]
+    },
+    "ModerationAuditLog": {
+      "title": "ModerationAuditLog",
+      "description": "Append-only audit log of administrator moderation actions.",
+      "type": "object",
+      "properties": {
+        "adminUid": { "type": "string" },
+        "action": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["post", "profile", "report"] },
+        "targetId": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["adminUid", "action", "targetType", "targetId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/community_users/{userId}": {
+      "schema": { "$ref": "#/entities/CommunityUser" },
+      "description": "Community user profiles and admin-controlled badge/restriction states."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Server-provisioned administrator markers."
+    },
+    "/community_posts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Community book discussion posts."
+    },
+    "/community_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/CommunityReport" },
+      "description": "Moderation reports submitted by signed-in users."
+    },
+    "/moderation_audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ModerationAuditLog" },
+      "description": "Append-only moderation audit history readable and writable only by admins."
+    }
+  }
+}

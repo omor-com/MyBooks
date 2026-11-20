@@ -1,0 +1,245 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.email == 'muhammedomor.dev@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+             (isSignedIn() && ('admin' in request.auth.token) && request.auth.token.admin == true) ||
+             (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isValidBadgeType(badge) {
+      return badge in ['none', 'blue', 'red_admin'];
+    }
+
+    function isValidDriveLink(url) {
+      return url is string &&
+             url.size() <= 500 &&
+             (url.size() == 0 || url.matches('^https://(drive|docs)\\.google\\.com/.*$'));
+    }
+
+    function isValidCommunityUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'photoUrl', 'badgeType', 'restricted', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'displayName', 'photoUrl', 'bio', 'badgeType', 'restricted', 'restrictionReason', 'createdAt', 'updatedAt']) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+             data.photoUrl is string && data.photoUrl.size() <= 500 &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+             isValidBadgeType(data.badgeType) &&
+             data.restricted is bool &&
+             (!('restrictionReason' in data) || (data.restrictionReason is string && data.restrictionReason.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function userProfileExists(uid) {
+      return exists(/databases/$(database)/documents/community_users/$(uid));
+    }
+
+    function isAuthorNotRestricted(uid) {
+      return userProfileExists(uid) &&
+             get(/databases/$(database)/documents/community_users/$(uid)).data.restricted == false;
+    }
+
+    function getAuthorBadge(uid) {
+      return get(/databases/$(database)/documents/community_users/$(uid)).data.badgeType;
+    }
+
+    function isValidCommunityPost(data) {
+      return data.keys().hasAll(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'visibility', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'driveLink', 'visibility', 'moderationNote', 'createdAt', 'updatedAt']) &&
+             data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+             data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500 &&
+             isValidBadgeType(data.authorBadge) &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
+             (!('driveLink' in data) || isValidDriveLink(data.driveLink)) &&
+             data.visibility in ['visible', 'hidden', 'removed'] &&
+             (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCommunityReport(data) {
+      return data.keys().hasAll(['reporterUid', 'targetType', 'targetId', 'reason', 'status', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['reporterUid', 'targetType', 'targetId', 'targetSummary', 'reason', 'details', 'status', 'reviewedBy', 'moderationAction', 'createdAt', 'updatedAt']) &&
+             data.reporterUid is string && data.reporterUid.size() >= 1 && data.reporterUid.size() <= 128 &&
+             data.targetType in ['post', 'profile'] &&
+             data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             (!('targetSummary' in data) || (data.targetSummary is string && data.targetSummary.size() <= 200)) &&
+             data.reason in ['harassment', 'insults', 'spam', 'malicious_link', 'impersonation', 'harmful_content', 'unlawful_content', 'other'] &&
+             (!('details' in data) || (data.details is string && data.details.size() <= 500)) &&
+             data.status in ['pending', 'reviewed', 'action_taken', 'dismissed'] &&
+             (!('reviewedBy' in data) || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
+             (!('moderationAction' in data) || (data.moderationAction is string && data.moderationAction.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidModerationAuditLog(data) {
+      return data.keys().hasAll(['adminUid', 'action', 'targetType', 'targetId', 'createdAt']) &&
+             data.keys().hasOnly(['adminUid', 'action', 'targetType', 'targetId', 'note', 'createdAt']) &&
+             data.adminUid is string && data.adminUid.size() >= 1 && data.adminUid.size() <= 128 &&
+             data.action is string && data.action.size() >= 1 && data.action.size() <= 80 &&
+             data.targetType in ['post', 'profile', 'report'] &&
+             data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /admins/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /community_users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidCommunityUser(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().uid == request.auth.uid &&
+                       incoming().restricted == false &&
+                       !('restrictionReason' in incoming()) &&
+                       (
+                         incoming().badgeType == 'none' ||
+                         (isBootstrappedAdmin() && incoming().badgeType == 'red_admin')
+                       );
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidCommunityUser(incoming()) &&
+                       incoming().uid == existing().uid &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         (
+                           request.auth.uid == userId &&
+                           incoming().badgeType == existing().badgeType &&
+                           incoming().restricted == existing().restricted &&
+                           (!('restrictionReason' in incoming()) ? !('restrictionReason' in existing()) : incoming().restrictionReason == existing().restrictionReason) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'bio', 'updatedAt'])
+                         ) ||
+                         (
+                           isAdmin() &&
+                           // Protected official admin cannot lose red_admin or be restricted
+                           !(existing().badgeType == 'red_admin' && (incoming().badgeType != 'red_admin' || incoming().restricted == true)) &&
+                           // Only bootstrapped admin account receives red_admin; admins grant/revoke 'blue' or 'none' for others
+                           (incoming().badgeType != 'red_admin' || existing().badgeType == 'red_admin') &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['badgeType', 'restricted', 'restrictionReason', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if false;
+    }
+
+    match /community_posts/{postId} {
+      allow get: if isSignedIn() &&
+                    isValidId(postId) &&
+                    (existing().visibility == 'visible' || existing().authorUid == request.auth.uid || isAdmin());
+
+      allow list: if isSignedIn() &&
+                     (existing().visibility == 'visible' || existing().authorUid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(postId) &&
+                       isValidCommunityPost(incoming()) &&
+                       incoming().authorUid == request.auth.uid &&
+                       incoming().visibility == 'visible' &&
+                       !('moderationNote' in incoming()) &&
+                       isAuthorNotRestricted(request.auth.uid) &&
+                       incoming().authorBadge == getAuthorBadge(request.auth.uid);
+
+      allow update: if isSignedIn() &&
+                       isValidId(postId) &&
+                       isValidCommunityPost(incoming()) &&
+                       incoming().authorUid == existing().authorUid &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         (
+                           existing().authorUid == request.auth.uid &&
+                           existing().visibility == 'visible' &&
+                           isAuthorNotRestricted(request.auth.uid) &&
+                           incoming().authorBadge == existing().authorBadge &&
+                           incoming().visibility == existing().visibility &&
+                           (!('moderationNote' in incoming()) ? !('moderationNote' in existing()) : incoming().moderationNote == existing().moderationNote) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['content', 'driveLink', 'updatedAt'])
+                         ) ||
+                         (
+                           isAdmin() &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['visibility', 'moderationNote', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if isSignedIn() &&
+                       isValidId(postId) &&
+                       (existing().authorUid == request.auth.uid || isAdmin());
+    }
+
+    match /community_reports/{reportId} {
+      allow get: if isSignedIn() &&
+                    isValidId(reportId) &&
+                    (existing().reporterUid == request.auth.uid || isAdmin());
+
+      allow list: if isSignedIn() &&
+                     (existing().reporterUid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(reportId) &&
+                       isValidCommunityReport(incoming()) &&
+                       incoming().reporterUid == request.auth.uid &&
+                       incoming().status == 'pending' &&
+                       !('reviewedBy' in incoming()) &&
+                       !('moderationAction' in incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(reportId) &&
+                       isAdmin() &&
+                       isValidCommunityReport(incoming()) &&
+                       incoming().reporterUid == existing().reporterUid &&
+                       incoming().targetType == existing().targetType &&
+                       incoming().targetId == existing().targetId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewedBy', 'moderationAction', 'updatedAt']);
+
+      allow delete: if isAdmin() && isValidId(reportId);
+    }
+
+    match /moderation_audit_logs/{logId} {
+      allow get: if isAdmin() && isValidId(logId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+                       isValidId(logId) &&
+                       isValidModerationAuditLog(incoming()) &&
+                       incoming().adminUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

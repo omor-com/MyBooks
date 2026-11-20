@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MyBooks</string>
+    <string name="app_tagline">আপনার অফলাইন-ফার্স্ট ব্যক্তিগত ডিজিটাল লাইব্রেরি ও রিডার</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">হোম</string>
+    <string name="nav_library">আমার লাইব্রেরি</string>
+    <string name="nav_bookmarks">বুকমার্ক ও নোট</string>
+    <string name="nav_community">কমিউনিটি</string>
+    <string name="nav_settings">সেটিংস</string>
+
+    <!-- Common Actions -->
+    <string name="action_add_book">বই যোগ করুন</string>
+    <string name="action_import_multiple">একাধিক বই</string>
+    <string name="action_save">সংরক্ষণ</string>
+    <string name="action_cancel">বাতিল</string>
+    <string name="action_delete">মুছুন</string>
+    <string name="action_edit">সম্পাদনা</string>
+    <string name="action_retry">আবার চেষ্টা করুন</string>
+    <string name="action_close">বন্ধ করুন</string>
+    <string name="action_confirm">নিশ্চিত করুন</string>
+    <string name="action_search">খুঁজুন</string>
+    <string name="action_filter">ফিল্টার</string>
+    <string name="action_sort">সাজান</string>
+    <string name="action_refresh">রিফ্রেশ</string>
+    <string name="action_open">খুলুন</string>
+    <string name="action_back">ফিরে যান</string>
+    <string name="action_reset">ডিফল্টে রিসেট</string>
+    <string name="action_clear">পরিষ্কার করুন</string>
+    <string name="action_relocate">ফাইল পুনঃনির্বাচন</string>
+
+    <!-- Home Screen -->
+    <string name="home_welcome_title">MyBooks-এ স্বাগতম</string>
+    <string name="home_continue_reading">পড়া চালিয়ে যান</string>
+    <string name="home_resume_reading">পড়ুন</string>
+    <string name="home_recently_added">সাম্প্রতিক যুক্ত</string>
+    <string name="home_recently_opened">সাম্প্রতিক পড়া</string>
+    <string name="home_favorites">পছন্দের তালিকা</string>
+    <string name="home_stats_books">মোট বই</string>
+    <string name="home_stats_completed">সমাপ্ত</string>
+    <string name="home_stats_notes">নোট ও চিহ্ন</string>
+    <string name="home_empty_title">আপনার লাইব্রেরি এখনও খালি</string>
+    <string name="home_empty_subtitle">ডিভাইস থেকে PDF, EPUB, TXT, HTML, Markdown, DOCX, ODT, RTF, FB2, CBZ বা ছবির বই ইম্পোর্ট করুন। সবকিছু সম্পূর্ণ অফলাইনে কাজ করে।</string>
+    <string name="home_empty_cta">প্রথম বই ইম্পোর্ট করুন</string>
+    <string name="home_progress_percent">%1$d%% পড়া হয়েছে</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">আমার লাইব্রেরি</string>
+    <string name="library_search_hint">শিরোনাম বা লেখক দিয়ে খুঁজুন</string>
+    <string name="library_empty_title">কোনো বই পাওয়া যায়নি</string>
+    <string name="library_empty_subtitle">ডিভাইস স্টোরেজ থেকে বই বা ডকুমেন্ট ইম্পোর্ট করতে + বাটনে ট্যাপ করুন।</string>
+    <string name="library_filter_all">সব</string>
+    <string name="library_filter_favorites">পছন্দ</string>
+    <string name="library_filter_categories">বিভাগ</string>
+    <string name="library_filter_tags">ট্যাগ</string>
+    <string name="library_filter_collections">সংগ্রহ</string>
+    <string name="library_sort_title">শিরোনাম (ক–হ / A–Z)</string>
+    <string name="library_sort_author">লেখক</string>
+    <string name="library_sort_date_added">যুক্ত করার তারিখ</string>
+    <string name="library_sort_recently_opened">সর্বশেষ খোলা</string>
+    <string name="library_sort_progress">পড়ার অগ্রগতি</string>
+    <string name="library_view_grid">গ্রিড ভিউ</string>
+    <string name="library_view_list">লিস্ট ভিউ</string>
+    <string name="library_missing_file_badge">ফাইল অনুপস্থিত</string>
+    <string name="library_missing_file_warning">মূল ফাইলটি পাওয়া যাচ্ছে না (সরিয়ে ফেলা হয়েছে, মুছে গেছে বা অনুমতি বাতিল হয়েছে)। বুকমার্ক ও নোট অক্ষত রেখে পড়তে ফাইলটি পুনঃনির্বাচন করুন।</string>
+    <string name="library_duplicate_title">অনুরূপ ডকুমেন্ট পাওয়া গেছে</string>
+    <string name="library_duplicate_message">\"%1$s\" আপনার লাইব্রেরির \"%2$s\" বইটির সাথে মিলে যায়। আপনি কী করতে চান?</string>
+    <string name="library_duplicate_skip">ইম্পোর্ট বাদ দিন</string>
+    <string name="library_duplicate_keep_both">উভয়ই রাখুন</string>
+    <string name="library_duplicate_replace_uri">বিদ্যমান ফাইলের লিংক আপডেট করুন</string>
+    <string name="library_delete_title">লাইব্রেরি থেকে সরান</string>
+    <string name="library_delete_message">\"%1$s\" সরালে কেবল লাইব্রেরির তালিকা থেকে বাদ যাবে; আপনার ডিভাইসের মূল ফাইল মুছে যাবে না।</string>
+    <string name="library_delete_keep_notes">ব্যক্তিগত নোট সংরক্ষণ করুন</string>
+    <string name="library_delete_remove_all">বই ও নোট সব সরান</string>
+    <string name="library_edit_metadata">বইয়ের তথ্য সম্পাদনা</string>
+    <string name="library_change_cover">কভার পরিবর্তন</string>
+    <string name="library_manage_collections">সংগ্রহ ও ট্যাগ</string>
+    <string name="library_new_collection">নতুন সংগ্রহ</string>
+    <string name="library_collection_name_hint">সংগ্রহের নাম</string>
+    <string name="library_field_title">শিরোনাম</string>
+    <string name="library_field_author">লেখক</string>
+    <string name="library_field_description">বিবরণ</string>
+    <string name="library_field_publisher">প্রকাশক</string>
+    <string name="library_field_language">ভাষা</string>
+    <string name="library_field_category">বিভাগ</string>
+    <string name="library_field_tags">ট্যাগ (কমা দিয়ে আলাদা করুন)</string>
+    <string name="library_import_success">%1$dটি ডকুমেন্ট ইম্পোর্ট হয়েছে</string>
+    <string name="library_import_failed">ফাইল ইম্পোর্ট করা যায়নি: %1$s</string>
+    <string name="library_unsupported_format">অসমর্থিত বা ত্রুটিপূর্ণ ডকুমেন্ট ফরম্যাট।</string>
+    <string name="library_relocate_success">ফাইলের লিংক সফলভাবে পুনরুদ্ধার হয়েছে।</string>
+
+    <!-- Reader -->
+    <string name="reader_loading">ডকুমেন্ট খোলা হচ্ছে…</string>
+    <string name="reader_error_title">ডকুমেন্ট খোলা যায়নি</string>
+    <string name="reader_error_missing">ফাইলটি পাওয়া যায়নি বা অনুমতি বাতিল হয়েছে। আমার লাইব্রেরি থেকে ফাইলটি পুনঃনির্বাচন করুন।</string>
+    <string name="reader_error_corrupt">ফাইলটি ত্রুটিপূর্ণ, পাসওয়ার্ড-সুরক্ষিত, অথবা অসমর্থিত DRM এনক্রিপশনে রয়েছে।</string>
+    <string name="reader_toc">সূচিপত্র</string>
+    <string name="reader_bookmarks">বুকমার্কসমূহ</string>
+    <string name="reader_add_bookmark">বুকমার্ক যোগ করুন</string>
+    <string name="reader_remove_bookmark">বুকমার্ক সরান</string>
+    <string name="reader_add_note">নোট লিখুন</string>
+    <string name="reader_search_hint">ডকুমেন্টের ভেতরে খুঁজুন</string>
+    <string name="reader_search_no_results">কোনো মিল পাওয়া যায়নি</string>
+    <string name="reader_page_indicator">পৃষ্ঠা %1$d / %2$d</string>
+    <string name="reader_chapter_indicator">অধ্যায় %1$d / %2$d</string>
+    <string name="reader_prev_page">পূর্ববর্তী</string>
+    <string name="reader_next_page">পরবর্তী</string>
+    <string name="reader_fit_width">প্রস্থ অনুযায়ী</string>
+    <string name="reader_fit_page">সম্পূর্ণ পৃষ্ঠা</string>
+    <string name="reader_zoom_reset">জুম রিসেট</string>
+    <string name="reader_settings">রিডার সেটিংস</string>
+    <string name="reader_theme_light">হালকা</string>
+    <string name="reader_theme_dark">অন্ধকার</string>
+    <string name="reader_theme_sepia">সেপিয়া</string>
+    <string name="reader_theme_amoled">অ্যামোলেড</string>
+    <string name="reader_font_size">ফন্টের আকার</string>
+    <string name="reader_line_spacing">লাইনের দূরত্ব</string>
+    <string name="reader_margins">মার্জিন</string>
+    <string name="reader_font_family">ফন্ট</string>
+    <string name="reader_fullscreen">ফুলস্ক্রিন মোড</string>
+    <string name="reader_keep_screen_on">স্ক্রিন চালু রাখুন</string>
+    <string name="reader_bookmark_saved">বুকমার্ক সংরক্ষিত হয়েছে</string>
+    <string name="reader_bookmark_removed">বুকমার্ক সরানো হয়েছে</string>
+    <string name="reader_note_saved">নোট সংরক্ষিত হয়েছে</string>
+    <string name="reader_highlight_saved">হাইলাইট সংরক্ষিত হয়েছে</string>
+    <string name="reader_save_highlight">হাইলাইট সংরক্ষণ</string>
+
+    <!-- Bookmarks & Notes -->
+    <string name="bookmarks_title">বুকমার্ক ও নোট</string>
+    <string name="bookmarks_tab_bookmarks">বুকমার্ক</string>
+    <string name="bookmarks_tab_notes">নোট</string>
+    <string name="bookmarks_tab_highlights">হাইলাইট</string>
+    <string name="bookmarks_search_hint">নোট, বুকমার্ক বা বইয়ের নাম খুঁজুন</string>
+    <string name="bookmarks_filter_all_books">সব বই</string>
+    <string name="bookmarks_empty_bookmarks">এখনও কোনো বুকমার্ক নেই</string>
+    <string name="bookmarks_empty_notes">এখনও কোনো নোট লেখা হয়নি</string>
+    <string name="bookmarks_empty_highlights">এখনও কোনো হাইলাইট নেই</string>
+    <string name="bookmarks_new_note">নতুন নোট</string>
+    <string name="bookmarks_edit_note">নোট সম্পাদনা</string>
+    <string name="bookmarks_note_title_hint">নোটের শিরোনাম (ঐচ্ছিক)</string>
+    <string name="bookmarks_note_content_hint">আপনার নোট লিখুন…</string>
+    <string name="bookmarks_select_book">বই নির্বাচন করুন (ঐচ্ছিক)</string>
+    <string name="bookmarks_no_book_attached">সাধারণ নোট</string>
+
+    <!-- Community -->
+    <string name="community_title">MyBooks কমিউনিটি</string>
+    <string name="community_offline_title">আপনি অফলাইনে আছেন</string>
+    <string name="community_offline_subtitle">কমিউনিটি ব্যবহার করতে ইন্টারনেট সংযোগ প্রয়োজন। তবে আপনার লাইব্রেরি, বই, বুকমার্ক ও নোট অফলাইনেই কাজ করবে।</string>
+    <string name="community_sign_in_title">বইপ্রেমীদের কমিউনিটিতে যোগ দিন</string>
+    <string name="community_sign_in_subtitle">বই নিয়ে আলোচনা করতে, ইমোজি ও টেক্সট পোস্ট করতে এবং ঐচ্ছিকভাবে Google Drive লিংক শেয়ার করতে Google দিয়ে সাইন ইন করুন। স্থানীয় বই পড়তে কোনো অ্যাকাউন্ট লাগে না।</string>
+    <string name="community_sign_in_button">Google দিয়ে সাইন ইন করুন</string>
+    <string name="community_sign_out">সাইন আউট</string>
+    <string name="community_create_post">নতুন পোস্ট লিখুন</string>
+    <string name="community_post_hint">বই সম্পর্কে আপনার মতামত বা আলোচনা লিখুন (টেক্সট ও ইমোজি)…</string>
+    <string name="community_drive_link_hint">ঐচ্ছিক Google Drive লিংক (https://drive.google.com/…)</string>
+    <string name="community_drive_link_disclaimer">ফাইল খোলার অনুমতি মূল মালিকের Google Drive শেয়ারিং সেটিংসের ওপর নির্ভর করে। MyBooks বাইরের ফাইল হোস্ট করে না।</string>
+    <string name="community_drive_link_invalid">অনুগ্রহ করে সঠিক https://drive.google.com/ অথবা https://docs.google.com/ লিংক দিন।</string>
+    <string name="community_publish_post">প্রকাশ করুন</string>
+    <string name="community_empty_feed">এখনও কোনো পোস্ট নেই। প্রথম বই আলোচনা শুরু করুন!</string>
+    <string name="community_load_more">আরও পোস্ট দেখুন</string>
+    <string name="community_rules_title">কমিউনিটি নীতিমালা</string>
+    <string name="community_rules_notice">সদস্যরা পোস্ট ও প্রোফাইল রিপোর্ট করতে পারেন এবং অ্যাডমিন তা পর্যালোচনা করবেন। নীতিমালা ভঙ্গ করলে পোস্ট অপসারণ বা অ্যাকাউন্ট সীমিত করা হতে পারে।</string>
+    <string name="community_profile_title">সদস্য প্রোফাইল</string>
+    <string name="community_profile_uid">ইউজার আইডি: %1$s</string>
+    <string name="community_report_post">পোস্ট রিপোর্ট করুন</string>
+    <string name="community_report_profile">প্রোফাইল রিপোর্ট করুন</string>
+    <string name="community_report_reason">রিপোর্টের কারণ</string>
+    <string name="community_report_details_hint">বিস্তারিত তথ্য (ঐচ্ছিক)</string>
+    <string name="community_report_submitted">রিপোর্ট পর্যালোচনার জন্য পাঠানো হয়েছে।</string>
+    <string name="community_report_duplicate">আপনি ইতোমধ্যে এটি রিপোর্ট করেছেন।</string>
+    <string name="community_open_drive_link">Google Drive লিংক খুলুন</string>
+    <string name="community_restricted_banner">মডারেশনের কারণে আপনার কমিউনিটি পোস্ট করার সুবিধা সীমিত করা হয়েছে।</string>
+    <string name="community_admin_panel">অ্যাডমিন মডারেশন</string>
+    <string name="community_admin_reports">রিপোর্টসমূহ</string>
+    <string name="community_admin_users">সদস্য ও ব্যাজ</string>
+    <string name="community_admin_audit">অডিট ইতিহাস</string>
+    <string name="community_badge_admin">অফিসিয়াল অ্যাডমিন</string>
+    <string name="community_badge_verified">ভেরিফায়েড সদস্য</string>
+    <string name="community_grant_blue_badge">ব্লু ব্যাজ দিন</string>
+    <string name="community_revoke_blue_badge">ব্লু ব্যাজ সরান</string>
+    <string name="community_restrict_user">সদস্য সীমিত করুন</string>
+    <string name="community_unrestrict_user">সীমাবদ্ধতা সরান</string>
+    <string name="community_hide_post">পোস্ট লুকান</string>
+    <string name="community_restore_post">পোস্ট পুনঃস্থাপন</string>
+    <string name="community_mark_reviewed">পর্যালোচিত চিহ্নিত করুন</string>
+    <string name="community_dismiss_report">বাতিল করুন</string>
+
+    <!-- Report Reasons -->
+    <string name="reason_harassment">হয়রানি বা বুলিং</string>
+    <string name="reason_insults">অপমান বা উপহাস</string>
+    <string name="reason_spam">স্প্যাম বা অপ্রাসঙ্গিক প্রচার</string>
+    <string name="reason_malicious_link">ক্ষতিকর বা সন্দেহজনক লিংক</string>
+    <string name="reason_impersonation">ছদ্মবেশ ধারণ</string>
+    <string name="reason_harmful_content">ক্ষতিকর বা অপব্যবহারমূলক কনটেন্ট</string>
+    <string name="reason_unlawful_content">অবৈধ কনটেন্ট</string>
+    <string name="reason_other">অন্যান্য</string>
+
+    <!-- Settings -->
+    <string name="settings_title">সেটিংস</string>
+    <string name="settings_section_appearance">থিম ও ভাষা</string>
+    <string name="settings_theme_mode">অ্যাপ থিম</string>
+    <string name="settings_theme_system">সিস্টেম অনুসরণ</string>
+    <string name="settings_theme_light">লাইট</string>
+    <string name="settings_theme_dark">ডার্ক</string>
+    <string name="settings_theme_amoled">অ্যামোলেড কালো</string>
+    <string name="settings_language">ভাষা</string>
+    <string name="settings_language_bn">বাংলা</string>
+    <string name="settings_language_en">English (ইংরেজি)</string>
+
+    <string name="settings_section_reading">পড়ার পছন্দসমূহ</string>
+    <string name="settings_default_reader_theme">ডিফল্ট রিডার থিম</string>
+    <string name="settings_show_progress">পড়ার অগ্রগতি বার দেখান</string>
+    <string name="settings_page_turn_sound">পৃষ্ঠা উল্টানোর শব্দ</string>
+    <string name="settings_page_turn_sound_desc">পৃষ্ঠা পরিবর্তনে মৃদু শব্দ বাজবে (ডাউনলোডের পর অফলাইনে কাজ করে)</string>
+    <string name="settings_download_sound">সাউন্ড ডাউনলোড করুন</string>
+    <string name="settings_downloading_sound">ডাউনলোড হচ্ছে (%1$d%%)…</string>
+    <string name="settings_sound_downloaded_ready">সাউন্ড ডাউনলোড সম্পন্ন ও অফলাইনে প্রস্তুত</string>
+    <string name="settings_sound_download_failed">ডাউনলোড ব্যর্থ হয়েছে। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।</string>
+    <string name="settings_sound_toggle">পৃষ্ঠা উল্টানোর শব্দ চালু করুন</string>
+
+    <string name="settings_section_storage">স্টোরেজ ব্যবস্থাপনা</string>
+    <string name="settings_storage_library_info">%1$dটি বই • %2$s সংযুক্ত</string>
+    <string name="settings_storage_cache_info">অ্যাপ ক্যাশ: %1$s</string>
+    <string name="settings_storage_missing_files">অনুপস্থিত ফাইল: %1$dটি</string>
+    <string name="settings_clear_cache">অ্যাপ ক্যাশ পরিষ্কার করুন</string>
+    <string name="settings_cache_cleared">অ্যাপ ক্যাশ পরিষ্কার করা হয়েছে। মূল বই অক্ষত রয়েছে।</string>
+
+    <string name="settings_section_backup">ব্যাকআপ ও রিস্টোর</string>
+    <string name="settings_backup_subtitle">লাইব্রেরির তথ্য, বুকমার্ক, নোট, সেটিংস ও বইয়ের ফাইল সংরক্ষণ বা পুনরুদ্ধার করুন</string>
+
+    <string name="settings_section_privacy">গোপনীয়তা ও নিরাপত্তা</string>
+    <string name="settings_privacy_summary">আপনার লাইব্রেরি, নোট, বুকমার্ক, পড়ার অবস্থান ও পছন্দসমূহ কেবল আপনার ডিভাইসেই সংরক্ষিত থাকে। কমিউনিটি ফিচার ঐচ্ছিক এবং আপনার ব্যক্তিগত বই বা পড়ার ইতিহাস কখনোই সার্ভারে আপলোড করে না।</string>
+
+    <string name="settings_section_developer">ডেভেলপার</string>
+    <string name="settings_official_shop">ডেভেলপারের অফিসিয়াল শপ</string>
+    <string name="settings_contact_support">সাপোর্ট ইমেইল</string>
+    <string name="settings_no_browser_error">লিংক খোলার জন্য কোনো ব্রাউজার পাওয়া যায়নি।</string>
+    <string name="settings_no_email_error">ইমেইল অ্যাপ পাওয়া যায়নি। যোগাযোগ: muhammedomor.studio@gmail.com</string>
+
+    <string name="settings_section_about">অ্যাপ সম্পর্কে</string>
+    <string name="settings_about_developer">ডেভেলপার: Muhammed Omor</string>
+    <string name="settings_about_version">সংস্করণ %1$s</string>
+    <string name="settings_about_copyright">© ২০২৬ Muhammed Omor। সর্বস্বত্ব সংরক্ষিত।</string>
+
+    <!-- Backup & Restore -->
+    <string name="backup_title">ব্যাকআপ ও রিস্টোর</string>
+    <string name="backup_create_section">ব্যাকআপ আর্কাইভ তৈরি করুন</string>
+    <string name="backup_mode_metadata">শুধুমাত্র মেটাডেটা ও পড়ার তথ্য</string>
+    <string name="backup_mode_metadata_desc">বইয়ের তালিকা, বুকমার্ক, হাইলাইট, নোট, সংগ্রহ, ট্যাগ, সেটিংস, কভার ও সাউন্ড</string>
+    <string name="backup_mode_selected">নির্বাচিত বই ও সংশ্লিষ্ট তথ্য</string>
+    <string name="backup_mode_selected_desc">মেটাডেটার সাথে নির্বাচিত বইগুলোর অ্যাক্সেসযোগ্য ডকুমেন্ট ফাইল</string>
+    <string name="backup_mode_full">সম্পূর্ণ লাইব্রেরি ব্যাকআপ (ফাইলসহ)</string>
+    <string name="backup_mode_full_desc">সকল মেটাডেটা এবং অ্যাক্সেসযোগ্য সব বইয়ের ফাইলসহ সম্পূর্ণ ব্যাকআপ</string>
+    <string name="backup_create_button">ZIP ব্যাকআপ তৈরি করুন</string>
+    <string name="backup_restore_section">ব্যাকআপ থেকে রিস্টোর</string>
+    <string name="backup_duplicate_policy">ডুপ্লিকেট ফাইল নীতি</string>
+    <string name="backup_policy_skip">বিদ্যমান ডুপ্লিকেট বাদ দিন</string>
+    <string name="backup_policy_keep_both">উভয় কপি রাখুন</string>
+    <string name="backup_policy_overwrite">বিদ্যমান তথ্য আপডেট করুন</string>
+    <string name="backup_restore_button">ZIP নির্বাচন ও রিস্টোর</string>
+    <string name="backup_restore_confirm_title">রিস্টোর নিশ্চিত করুন</string>
+    <string name="backup_restore_confirm_message">আপনার বর্তমান লাইব্রেরি অক্ষত থাকবে। ব্যাকআপ আর্কাইভ থেকে (%1$dটি বই, %2$dটি নোট, %3$dটি বুকমার্ক) নির্বাচিত নীতি অনুযায়ী যুক্ত হবে।</string>
+    <string name="backup_success">ব্যাকআপ সফলভাবে তৈরি হয়েছে।</string>
+    <string name="backup_success_with_warnings">ব্যাকআপ তৈরি হয়েছে। %1$dটি অ্যাক্সেস-অযোগ্য ফাইল অন্তর্ভুক্ত করা যায়নি।</string>
+    <string name="restore_success">রিস্টোর সম্পন্ন: %1$dটি বই, %2$dটি বুকমার্ক, %3$dটি নোট প্রক্রিয়াকৃত।</string>
+    <string name="restore_invalid_archive">ত্রুটিপূর্ণ বা অনিরাপদ ব্যাকআপ আর্কাইভ। বর্তমান তথ্য অপরিবর্তিত আছে।</string>
+    <string name="backup_community_note">বিঃদ্রঃ: অনলাইন কমিউনিটি পোস্ট ও অ্যাকাউন্ট তথ্য স্থানীয় ব্যাকআপে অন্তর্ভুক্ত থাকে না।</string>
+</resources>

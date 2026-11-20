@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MyBooks</string>
+    <string name="app_tagline">Your Offline-First Personal Library &amp; Reader</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_library">My Library</string>
+    <string name="nav_bookmarks">Bookmarks &amp; Notes</string>
+    <string name="nav_community">Community</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Common Actions -->
+    <string name="action_add_book">Import Book</string>
+    <string name="action_import_multiple">Import Multiple</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_close">Close</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_search">Search</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_sort">Sort</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_open">Open</string>
+    <string name="action_back">Back</string>
+    <string name="action_reset">Reset to Default</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_relocate">Relocate File</string>
+
+    <!-- Home Screen -->
+    <string name="home_welcome_title">Welcome to MyBooks</string>
+    <string name="home_continue_reading">Continue Reading</string>
+    <string name="home_resume_reading">Resume</string>
+    <string name="home_recently_added">Recently Added</string>
+    <string name="home_recently_opened">Recently Opened</string>
+    <string name="home_favorites">Favorites</string>
+    <string name="home_stats_books">Total Books</string>
+    <string name="home_stats_completed">Completed</string>
+    <string name="home_stats_notes">Notes &amp; Marks</string>
+    <string name="home_empty_title">Your library is empty</string>
+    <string name="home_empty_subtitle">Import PDF, EPUB, TXT, HTML, Markdown, DOCX, ODT, RTF, FB2, CBZ, or image books from your device. Everything works 100% offline.</string>
+    <string name="home_empty_cta">Import Your First Book</string>
+    <string name="home_progress_percent">%1$d%% read</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">My Library</string>
+    <string name="library_search_hint">Search by title or author</string>
+    <string name="library_empty_title">No books found</string>
+    <string name="library_empty_subtitle">Tap the + button to import documents from device storage.</string>
+    <string name="library_filter_all">All</string>
+    <string name="library_filter_favorites">Favorites</string>
+    <string name="library_filter_categories">Categories</string>
+    <string name="library_filter_tags">Tags</string>
+    <string name="library_filter_collections">Collections</string>
+    <string name="library_sort_title">Title (A–Z)</string>
+    <string name="library_sort_author">Author (A–Z)</string>
+    <string name="library_sort_date_added">Date Added</string>
+    <string name="library_sort_recently_opened">Recently Opened</string>
+    <string name="library_sort_progress">Reading Progress</string>
+    <string name="library_view_grid">Grid view</string>
+    <string name="library_view_list">List view</string>
+    <string name="library_missing_file_badge">File Missing</string>
+    <string name="library_missing_file_warning">The original file could not be accessed (moved, deleted, or permission revoked). Relocate the file to continue reading without losing bookmarks or notes.</string>
+    <string name="library_duplicate_title">Duplicate Document Detected</string>
+    <string name="library_duplicate_message">\"%1$s\" appears to match an existing book in your library (\"%2$s\"). How would you like to proceed?</string>
+    <string name="library_duplicate_skip">Skip Import</string>
+    <string name="library_duplicate_keep_both">Keep Both</string>
+    <string name="library_duplicate_replace_uri">Update Existing File Link</string>
+    <string name="library_delete_title">Remove from Library</string>
+    <string name="library_delete_message">Removing \"%1$s\" only deletes the library entry and does NOT delete your original file from device storage.</string>
+    <string name="library_delete_keep_notes">Keep personal notes</string>
+    <string name="library_delete_remove_all">Remove book &amp; its notes</string>
+    <string name="library_edit_metadata">Edit Book Details</string>
+    <string name="library_change_cover">Change Cover</string>
+    <string name="library_manage_collections">Collections &amp; Tags</string>
+    <string name="library_new_collection">New Collection</string>
+    <string name="library_collection_name_hint">Collection name</string>
+    <string name="library_field_title">Title</string>
+    <string name="library_field_author">Author</string>
+    <string name="library_field_description">Description</string>
+    <string name="library_field_publisher">Publisher</string>
+    <string name="library_field_language">Language</string>
+    <string name="library_field_category">Category</string>
+    <string name="library_field_tags">Tags (comma-separated)</string>
+    <string name="library_import_success">Imported %1$d document(s)</string>
+    <string name="library_import_failed">Could not import file: %1$s</string>
+    <string name="library_unsupported_format">Unsupported or corrupted document format.</string>
+    <string name="library_relocate_success">File link restored successfully.</string>
+
+    <!-- Reader -->
+    <string name="reader_loading">Opening document…</string>
+    <string name="reader_error_title">Unable to Open Document</string>
+    <string name="reader_error_missing">This file is missing or its storage permission was revoked. Please relocate it from My Library.</string>
+    <string name="reader_error_corrupt">The document appears corrupted, password-protected, or uses an unsupported DRM encoding.</string>
+    <string name="reader_toc">Table of Contents</string>
+    <string name="reader_bookmarks">Bookmarks</string>
+    <string name="reader_add_bookmark">Add Bookmark</string>
+    <string name="reader_remove_bookmark">Remove Bookmark</string>
+    <string name="reader_add_note">Add Note</string>
+    <string name="reader_search_hint">Search inside document</string>
+    <string name="reader_search_no_results">No matches found</string>
+    <string name="reader_page_indicator">Page %1$d of %2$d</string>
+    <string name="reader_chapter_indicator">Chapter %1$d of %2$d</string>
+    <string name="reader_prev_page">Previous</string>
+    <string name="reader_next_page">Next</string>
+    <string name="reader_fit_width">Fit Width</string>
+    <string name="reader_fit_page">Fit Page</string>
+    <string name="reader_zoom_reset">Reset Zoom</string>
+    <string name="reader_settings">Reader Settings</string>
+    <string name="reader_theme_light">Light</string>
+    <string name="reader_theme_dark">Dark</string>
+    <string name="reader_theme_sepia">Sepia</string>
+    <string name="reader_theme_amoled">AMOLED</string>
+    <string name="reader_font_size">Font Size</string>
+    <string name="reader_line_spacing">Line Spacing</string>
+    <string name="reader_margins">Margins</string>
+    <string name="reader_font_family">Font</string>
+    <string name="reader_fullscreen">Fullscreen Mode</string>
+    <string name="reader_keep_screen_on">Keep Screen On</string>
+    <string name="reader_bookmark_saved">Bookmark saved</string>
+    <string name="reader_bookmark_removed">Bookmark removed</string>
+    <string name="reader_note_saved">Note saved</string>
+    <string name="reader_highlight_saved">Highlight saved</string>
+    <string name="reader_save_highlight">Save Highlight</string>
+
+    <!-- Bookmarks & Notes -->
+    <string name="bookmarks_title">Bookmarks &amp; Notes</string>
+    <string name="bookmarks_tab_bookmarks">Bookmarks</string>
+    <string name="bookmarks_tab_notes">Notes</string>
+    <string name="bookmarks_tab_highlights">Highlights</string>
+    <string name="bookmarks_search_hint">Search notes, bookmarks, or book titles</string>
+    <string name="bookmarks_filter_all_books">All Books</string>
+    <string name="bookmarks_empty_bookmarks">No bookmarks saved yet</string>
+    <string name="bookmarks_empty_notes">No personal notes yet</string>
+    <string name="bookmarks_empty_highlights">No highlights saved yet</string>
+    <string name="bookmarks_new_note">New Note</string>
+    <string name="bookmarks_edit_note">Edit Note</string>
+    <string name="bookmarks_note_title_hint">Note title (optional)</string>
+    <string name="bookmarks_note_content_hint">Write your thoughts…</string>
+    <string name="bookmarks_select_book">Select Book (optional)</string>
+    <string name="bookmarks_no_book_attached">General Note</string>
+
+    <!-- Community -->
+    <string name="community_title">MyBooks Community</string>
+    <string name="community_offline_title">You are offline</string>
+    <string name="community_offline_subtitle">Community requires an internet connection. Your local library, books, bookmarks, and notes continue working offline.</string>
+    <string name="community_sign_in_title">Join the Book Community</string>
+    <string name="community_sign_in_subtitle">Sign in with Google to discuss books, share thoughts with emojis, and optionally post Google Drive links. Reading local books never requires an account.</string>
+    <string name="community_sign_in_button">Sign in with Google</string>
+    <string name="community_sign_out">Sign Out</string>
+    <string name="community_create_post">Write a Post</string>
+    <string name="community_post_hint">Share book thoughts, reviews, or reading notes (text &amp; emojis)…</string>
+    <string name="community_drive_link_hint">Optional Google Drive link (https://drive.google.com/…)</string>
+    <string name="community_drive_link_disclaimer">Access depends on the owner\'s Google Drive sharing permissions. MyBooks does not host or verify external files.</string>
+    <string name="community_drive_link_invalid">Please enter a valid https://drive.google.com/ or https://docs.google.com/ link.</string>
+    <string name="community_publish_post">Publish</string>
+    <string name="community_empty_feed">No posts yet. Start the first book discussion!</string>
+    <string name="community_load_more">Load More Posts</string>
+    <string name="community_rules_title">Community Rules</string>
+    <string name="community_rules_notice">Posts and profiles may be reported by members and reviewed by the administrator. Violations may result in post removal or account restriction.</string>
+    <string name="community_profile_title">Member Profile</string>
+    <string name="community_profile_uid">User ID: %1$s</string>
+    <string name="community_report_post">Report Post</string>
+    <string name="community_report_profile">Report Profile</string>
+    <string name="community_report_reason">Reason</string>
+    <string name="community_report_details_hint">Additional details (optional)</string>
+    <string name="community_report_submitted">Report submitted for moderation review.</string>
+    <string name="community_report_duplicate">You have already reported this item.</string>
+    <string name="community_open_drive_link">Open Google Drive Link</string>
+    <string name="community_restricted_banner">Your Community posting privileges are currently restricted by moderation.</string>
+    <string name="community_admin_panel">Admin Moderation</string>
+    <string name="community_admin_reports">Reports</string>
+    <string name="community_admin_users">Members &amp; Badges</string>
+    <string name="community_admin_audit">Audit History</string>
+    <string name="community_badge_admin">Official Administrator</string>
+    <string name="community_badge_verified">Verified Member</string>
+    <string name="community_grant_blue_badge">Grant Blue Badge</string>
+    <string name="community_revoke_blue_badge">Revoke Blue Badge</string>
+    <string name="community_restrict_user">Restrict User</string>
+    <string name="community_unrestrict_user">Remove Restriction</string>
+    <string name="community_hide_post">Hide Post</string>
+    <string name="community_restore_post">Restore Post</string>
+    <string name="community_mark_reviewed">Mark Reviewed</string>
+    <string name="community_dismiss_report">Dismiss</string>
+
+    <!-- Report Reasons -->
+    <string name="reason_harassment">Harassment or Bullying</string>
+    <string name="reason_insults">Insults or Mocking</string>
+    <string name="reason_spam">Spam or Self-Promotion</string>
+    <string name="reason_malicious_link">Suspicious or Malicious Link</string>
+    <string name="reason_impersonation">Impersonation</string>
+    <string name="reason_harmful_content">Abusive or Harmful Content</string>
+    <string name="reason_unlawful_content">Unlawful Content</string>
+    <string name="reason_other">Other</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_appearance">Appearance &amp; Language</string>
+    <string name="settings_theme_mode">App Theme</string>
+    <string name="settings_theme_system">Follow System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_amoled">AMOLED Black</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_bn">বাংলা (Bangla)</string>
+    <string name="settings_language_en">English</string>
+
+    <string name="settings_section_reading">Reading Preferences</string>
+    <string name="settings_default_reader_theme">Default Reader Theme</string>
+    <string name="settings_show_progress">Show Reading Progress Bar</string>
+    <string name="settings_page_turn_sound">Page-Turn Sound</string>
+    <string name="settings_page_turn_sound_desc">Play a subtle page-flip sound on discrete page turns (works offline after download)</string>
+    <string name="settings_download_sound">Download Sound</string>
+    <string name="settings_downloading_sound">Downloading (%1$d%%)…</string>
+    <string name="settings_sound_downloaded_ready">Sound downloaded &amp; ready offline</string>
+    <string name="settings_sound_download_failed">Download failed. Check internet and retry.</string>
+    <string name="settings_sound_toggle">Enable Page-Turn Sound</string>
+
+    <string name="settings_section_storage">Storage Management</string>
+    <string name="settings_storage_library_info">%1$d books • %2$s referenced</string>
+    <string name="settings_storage_cache_info">App cache: %1$s</string>
+    <string name="settings_storage_missing_files">Missing files: %1$d</string>
+    <string name="settings_clear_cache">Clear App Cache</string>
+    <string name="settings_cache_cleared">Application cache cleared. Original books remain untouched.</string>
+
+    <string name="settings_section_backup">Backup &amp; Restore</string>
+    <string name="settings_backup_subtitle">Export or restore library metadata, bookmarks, notes, preferences, and accessible book files</string>
+
+    <string name="settings_section_privacy">Privacy &amp; Security</string>
+    <string name="settings_privacy_summary">Your library database, notes, bookmarks, reading positions, and preferences stay strictly on your device. Community features are optional, require Google Sign-In, and never upload your private books or reading history.</string>
+
+    <string name="settings_section_developer">Developer</string>
+    <string name="settings_official_shop">Developer Official Shop</string>
+    <string name="settings_contact_support">Contact Support</string>
+    <string name="settings_no_browser_error">No browser app found to open this link.</string>
+    <string name="settings_no_email_error">No email app found. Contact: muhammedomor.studio@gmail.com</string>
+
+    <string name="settings_section_about">About</string>
+    <string name="settings_about_developer">Developer: Muhammed Omor</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_about_copyright">© 2026 Muhammed Omor. All rights reserved.</string>
+
+    <!-- Backup & Restore -->
+    <string name="backup_title">Backup &amp; Restore</string>
+    <string name="backup_create_section">Create Backup Archive</string>
+    <string name="backup_mode_metadata">Metadata &amp; Reading Data Only</string>
+    <string name="backup_mode_metadata_desc">Books metadata, bookmarks, highlights, notes, collections, tags, preferences, covers &amp; sound</string>
+    <string name="backup_mode_selected">Selected Books &amp; Related Data</string>
+    <string name="backup_mode_selected_desc">Includes accessible document files for selected books alongside full metadata</string>
+    <string name="backup_mode_full">Full Library Backup (With Files)</string>
+    <string name="backup_mode_full_desc">Includes all metadata plus every accessible document file</string>
+    <string name="backup_create_button">Create ZIP Backup</string>
+    <string name="backup_restore_section">Restore From Backup</string>
+    <string name="backup_duplicate_policy">Duplicate Handling Policy</string>
+    <string name="backup_policy_skip">Skip Existing Duplicates</string>
+    <string name="backup_policy_keep_both">Keep Both Copies</string>
+    <string name="backup_policy_overwrite">Update Matching Entries</string>
+    <string name="backup_restore_button">Select ZIP &amp; Restore</string>
+    <string name="backup_restore_confirm_title">Confirm Library Restore</string>
+    <string name="backup_restore_confirm_message">Your existing library will be preserved safely. Validated entries from the backup archive (%1$d books, %2$d notes, %3$d bookmarks) will be merged using your selected duplicate policy.</string>
+    <string name="backup_success">Backup created successfully.</string>
+    <string name="backup_success_with_warnings">Backup created. %1$d inaccessible file(s) could not be included.</string>
+    <string name="restore_success">Restore complete: %1$d books, %2$d bookmarks, %3$d notes processed.</string>
+    <string name="restore_invalid_archive">Invalid or unsafe backup archive. Existing data was not modified.</string>
+    <string name="backup_community_note">Note: Online Community posts and account profiles are not stored in local backups.</string>
+</resources>
