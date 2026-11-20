@@ -57,6 +57,10 @@ You can build and download an installable APK directly on your Android phone wit
 5. Scroll down to **Artifacts** on the workflow summary page and tap **MyBooks-Debug-APK** to download the `.zip` file.
 6. Open your phone's **Files** app, extract `app-debug.apk` from the downloaded `.zip`, and tap it to install (allow *"Install unknown apps"* for your Files/Browser app if prompted).
 
+### Optional Firebase / Google Sign-In in GitHub-Built APKs
+GitHub Actions builds cleanly even when `app/google-services.json` is omitted (all offline library/reader/backup features work immediately). To also enable **online Community & Google Sign-In** in APKs built on GitHub Actions, add a Repository Secret (`Settings → Secrets and variables → Actions`):
+- `GOOGLE_SERVICES_JSON`: paste the full JSON contents of `app/google-services.json`
+
 ### Signed Release APK Setup (`release-apk.yml`)
 To sign release APKs via GitHub Actions without committing keystores to Git:
 1. Encode your `.jks` keystore: `base64 -w 0 my-upload-key.jks`
