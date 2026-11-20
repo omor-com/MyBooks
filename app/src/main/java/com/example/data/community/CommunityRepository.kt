@@ -36,6 +36,7 @@ class CommunityRepository(
         const val COL_USERS = "community_users"
         const val COL_ADMINS = "admins"
         const val COL_POSTS = "community_posts"
+        const val SUBCOL_COMMENTS = "comments"
         const val COL_REPORTS = "community_reports"
         const val COL_AUDIT_LOGS = "moderation_audit_logs"
     }
@@ -95,6 +96,7 @@ class CommunityRepository(
                 "photoUrl" to defaultAvatar,
                 "bio" to "",
                 "badgeType" to badge.firestoreValue,
+                "accountStatus" to AccountStatus.ACTIVE.firestoreValue,
                 "restricted" to false,
                 "createdAt" to FieldValue.serverTimestamp(),
                 "updatedAt" to FieldValue.serverTimestamp()
@@ -106,7 +108,8 @@ class CommunityRepository(
                     uid = user.uid,
                     displayName = displayName,
                     photoUrl = defaultAvatar,
-                    badgeType = badge.firestoreValue
+                    badgeType = badge.firestoreValue,
+                    accountStatus = AccountStatus.ACTIVE.firestoreValue
                 )
             Result.success(created)
         } catch (e: CancellationException) {
@@ -123,9 +126,7 @@ class CommunityRepository(
         emitAll(
             db.collection(COL_USERS).document(userId)
                 .snapshots()
-                .map { snap ->
-                    snap.safeToUser()
-                }
+                .map { snap -> snap.safeToUser() }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
                         .filterIsInstance<FirebaseFirestoreException>()
@@ -194,7 +195,6 @@ class CommunityRepository(
                         .firstOrNull()
                     if (fsError == null && error is CancellationException) throw error
                     if (fsError?.code == FirebaseFirestoreException.Code.FAILED_PRECONDITION) {
-                        // Fallback query avoids composite index crash while remaining compliant with firestore.rules
                         val fallbackQuery = db.collection(COL_POSTS)
                             .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
                             .limit((limitCount * 2L).coerceAtMost(100L))
@@ -228,10 +228,48 @@ class CommunityRepository(
         )
     }
 
+    suspend fun getVisiblePostsByUser(userId: String, limitCount: Long = 20L): Result<List<CommunityPost>> {
+        return try {
+            requireUser()
+            val primary = db.collection(COL_POSTS)
+                .whereEqualTo("authorUid", userId)
+                .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limitCount)
+            val docs = try {
+                primary.get().await().safeToPosts()
+            } catch (e: Exception) {
+                val fsErr = generateSequence<Throwable>(e) { it.cause }
+                    .filterIsInstance<FirebaseFirestoreException>()
+                    .firstOrNull()
+                if (fsErr?.code == FirebaseFirestoreException.Code.FAILED_PRECONDITION) {
+                    db.collection(COL_POSTS)
+                        .whereEqualTo("authorUid", userId)
+                        .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
+                        .limit(50L)
+                        .get()
+                        .await()
+                        .safeToPosts()
+                        .sortedByDescending { it.createdAt?.seconds ?: 0L }
+                        .take(limitCount.toInt())
+                } else {
+                    throw e
+                }
+            }
+            Result.success(docs)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.LIST, COL_POSTS)
+            Result.failure(e)
+        }
+    }
+
     suspend fun createPost(
         authorProfile: CommunityUser,
         content: String,
-        driveLink: String?
+        driveLink: String?,
+        bookTitle: String? = null
     ): Result<Unit> {
         val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
         val postId = UUID.randomUUID().toString().replace("-", "_")
@@ -244,6 +282,10 @@ class CommunityRepository(
             val cleanDriveLink = driveLink?.trim().orEmpty()
             require(CommunityLinkValidator.isValidOptionalDriveLink(cleanDriveLink)) {
                 "Invalid Google Drive link"
+            }
+            val cleanBookTitle = bookTitle?.trim().orEmpty().take(120)
+            require(CommunityLinkValidator.isValidOptionalBookTitle(cleanDriveLink, cleanBookTitle)) {
+                "Book title is required when attaching a Google Drive link"
             }
 
             val payload = mutableMapOf<String, Any>(
@@ -258,6 +300,7 @@ class CommunityRepository(
             )
             if (cleanDriveLink.isNotEmpty()) {
                 payload["driveLink"] = cleanDriveLink
+                payload["bookTitle"] = cleanBookTitle
             }
 
             db.collection(COL_POSTS).document(postId).set(payload).await()
@@ -266,6 +309,45 @@ class CommunityRepository(
             throw e
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.CREATE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun editOwnPost(
+        postId: String,
+        content: String,
+        driveLink: String?,
+        bookTitle: String?
+    ): Result<Unit> {
+        val path = "$COL_POSTS/$postId"
+        return try {
+            requireUser()
+            val cleanContent = content.trim()
+            require(cleanContent.isNotEmpty() && cleanContent.length <= 2000) {
+                "Post content must be between 1 and 2000 characters"
+            }
+            val cleanDriveLink = driveLink?.trim().orEmpty()
+            require(CommunityLinkValidator.isValidOptionalDriveLink(cleanDriveLink)) {
+                "Invalid Google Drive link"
+            }
+            val cleanBookTitle = bookTitle?.trim().orEmpty().take(120)
+            require(CommunityLinkValidator.isValidOptionalBookTitle(cleanDriveLink, cleanBookTitle)) {
+                "Book title is required when attaching a Google Drive link"
+            }
+
+            db.collection(COL_POSTS).document(postId).update(
+                mapOf(
+                    "content" to cleanContent,
+                    "driveLink" to cleanDriveLink,
+                    "bookTitle" to if (cleanDriveLink.isEmpty()) "" else cleanBookTitle,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.UPDATE, path)
             Result.failure(e)
         }
     }
@@ -284,33 +366,165 @@ class CommunityRepository(
         }
     }
 
+    // --- COMMENTS & REPLIES (Bounded per open post) ---
+
+    fun observeCommentsForPost(postId: String, limitCount: Long = 50L): Flow<List<CommunityComment>> = flow {
+        val uid = requireUser().uid
+        val path = "$COL_POSTS/$postId/$SUBCOL_COMMENTS"
+        val primaryQuery = db.collection(COL_POSTS)
+            .document(postId)
+            .collection(SUBCOL_COMMENTS)
+            .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
+            .orderBy("createdAt", Query.Direction.ASCENDING)
+            .limit(limitCount)
+
+        emitAll(
+            primaryQuery.snapshots()
+                .map { snapshot -> snapshot.safeToComments() }
+                .catch { error ->
+                    val fsError = generateSequence(error) { it.cause }
+                        .filterIsInstance<FirebaseFirestoreException>()
+                        .firstOrNull()
+                    if (fsError == null && error is CancellationException) throw error
+                    if (fsError?.code == FirebaseFirestoreException.Code.FAILED_PRECONDITION) {
+                        val fallbackQuery = db.collection(COL_POSTS)
+                            .document(postId)
+                            .collection(SUBCOL_COMMENTS)
+                            .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
+                            .limit((limitCount * 2L).coerceAtMost(120L))
+                        emitAll(
+                            fallbackQuery.snapshots()
+                                .map { snap ->
+                                    snap.safeToComments()
+                                        .sortedBy { it.createdAt?.seconds ?: Long.MAX_VALUE }
+                                        .take(limitCount.toInt())
+                                }
+                                .catch { fallbackErr ->
+                                    val fbFsErr = generateSequence(fallbackErr) { it.cause }
+                                        .filterIsInstance<FirebaseFirestoreException>()
+                                        .firstOrNull()
+                                    if (fbFsErr == null && fallbackErr is CancellationException) throw fallbackErr
+                                    val toLog = fbFsErr ?: (fallbackErr as? Exception)
+                                    if (toLog != null && auth.currentUser?.uid == uid) {
+                                        handleFirestoreError(toLog, OperationType.LIST, path)
+                                    }
+                                    throw fallbackErr
+                                }
+                        )
+                    } else {
+                        val toLog = fsError ?: (error as? Exception)
+                        if (toLog != null && auth.currentUser?.uid == uid) {
+                            handleFirestoreError(toLog, OperationType.LIST, path)
+                        }
+                        throw error
+                    }
+                }
+        )
+    }
+
+    suspend fun addComment(
+        authorProfile: CommunityUser,
+        postId: String,
+        content: String,
+        parentCommentId: String = "",
+        replyToAuthorName: String = ""
+    ): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val commentId = UUID.randomUUID().toString().replace("-", "_")
+        val path = "$COL_POSTS/$postId/$SUBCOL_COMMENTS/$commentId"
+        return try {
+            val cleanContent = content.trim()
+            require(cleanContent.isNotEmpty() && cleanContent.length <= 1000) {
+                "Comment must be between 1 and 1000 characters"
+            }
+            val payload = mutableMapOf<String, Any>(
+                "postId" to postId,
+                "authorUid" to uid,
+                "authorName" to authorProfile.displayName.take(60).ifBlank { "MyBooks Reader" },
+                "authorPhotoUrl" to authorProfile.photoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL },
+                "authorBadge" to authorProfile.badge.firestoreValue,
+                "content" to cleanContent,
+                "visibility" to PostVisibility.VISIBLE.firestoreValue,
+                "createdAt" to FieldValue.serverTimestamp(),
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+            val cleanParent = parentCommentId.trim().take(128)
+            if (cleanParent.isNotEmpty()) {
+                payload["parentCommentId"] = cleanParent
+                val cleanReplyTo = replyToAuthorName.trim().take(60)
+                if (cleanReplyTo.isNotEmpty()) {
+                    payload["replyToAuthorName"] = cleanReplyTo
+                }
+            }
+
+            db.collection(COL_POSTS)
+                .document(postId)
+                .collection(SUBCOL_COMMENTS)
+                .document(commentId)
+                .set(payload)
+                .await()
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.CREATE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteOwnComment(postId: String, commentId: String): Result<Unit> {
+        val path = "$COL_POSTS/$postId/$SUBCOL_COMMENTS/$commentId"
+        return try {
+            requireUser()
+            db.collection(COL_POSTS)
+                .document(postId)
+                .collection(SUBCOL_COMMENTS)
+                .document(commentId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.DELETE, path)
+            Result.failure(e)
+        }
+    }
+
     suspend fun submitReport(
         targetType: String,
         targetId: String,
         targetSummary: String,
         reason: ReportReason,
-        details: String
+        details: String,
+        parentPostId: String = ""
     ): Result<Unit> {
         val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val normalizedType = when (targetType) {
+            "user", "profile" -> "profile"
+            "comment" -> "comment"
+            else -> "post"
+        }
         val sanitizedTarget = targetId.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
-        val reportId = "${targetType}_${sanitizedTarget}_${uid}".take(128)
+        val reportId = "${normalizedType}_${sanitizedTarget}_${uid}".take(128)
         val path = "$COL_REPORTS/$reportId"
         return try {
             val payload = mutableMapOf<String, Any>(
                 "reporterUid" to uid,
-                "targetType" to targetType,
+                "targetType" to normalizedType,
                 "targetId" to targetId.take(128),
                 "reason" to reason.firestoreValue,
                 "status" to ReportStatus.PENDING.firestoreValue,
                 "createdAt" to FieldValue.serverTimestamp(),
                 "updatedAt" to FieldValue.serverTimestamp()
             )
+            val cleanParentPost = parentPostId.trim().take(128)
+            if (cleanParentPost.isNotEmpty()) payload["parentPostId"] = cleanParentPost
             val cleanSummary = targetSummary.trim().take(200)
             if (cleanSummary.isNotEmpty()) payload["targetSummary"] = cleanSummary
             val cleanDetails = details.trim().take(500)
             if (cleanDetails.isNotEmpty()) payload["details"] = cleanDetails
 
-            // Deterministic document ID + create rule prevents duplicate reports for the same target
             val existing = db.collection(COL_REPORTS).document(reportId).get().await()
             if (existing.exists()) {
                 return Result.failure(IllegalStateException("DUPLICATE_REPORT"))
@@ -441,6 +655,71 @@ class CommunityRepository(
         }
     }
 
+    suspend fun adminDeletePost(postId: String, note: String): Result<Unit> {
+        val adminUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val path = "$COL_POSTS/$postId"
+        return try {
+            db.collection(COL_POSTS).document(postId).delete().await()
+            writeAuditLog(adminUid, "delete_post", "post", postId, note)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.DELETE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun adminSetCommentVisibility(
+        postId: String,
+        commentId: String,
+        visibility: PostVisibility,
+        note: String
+    ): Result<Unit> {
+        val adminUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val path = "$COL_POSTS/$postId/$SUBCOL_COMMENTS/$commentId"
+        return try {
+            db.collection(COL_POSTS)
+                .document(postId)
+                .collection(SUBCOL_COMMENTS)
+                .document(commentId)
+                .update(
+                    mapOf(
+                        "visibility" to visibility.firestoreValue,
+                        "moderationNote" to note.take(300),
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                ).await()
+            writeAuditLog(adminUid, "comment_${visibility.firestoreValue}", "comment", commentId, note)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.UPDATE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun adminDeleteComment(postId: String, commentId: String, note: String): Result<Unit> {
+        val adminUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val path = "$COL_POSTS/$postId/$SUBCOL_COMMENTS/$commentId"
+        return try {
+            db.collection(COL_POSTS)
+                .document(postId)
+                .collection(SUBCOL_COMMENTS)
+                .document(commentId)
+                .delete()
+                .await()
+            writeAuditLog(adminUid, "delete_comment", "comment", commentId, note)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.DELETE, path)
+            Result.failure(e)
+        }
+    }
+
     suspend fun adminSetUserBlueBadge(targetUid: String, grantBlue: Boolean): Result<Unit> {
         val adminUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
         val path = "$COL_USERS/$targetUid"
@@ -468,24 +747,26 @@ class CommunityRepository(
         }
     }
 
-    suspend fun adminSetUserRestriction(
+    suspend fun adminSetUserAccountStatus(
         targetUid: String,
-        restricted: Boolean,
+        status: AccountStatus,
         reason: String
     ): Result<Unit> {
         val adminUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
         val path = "$COL_USERS/$targetUid"
         return try {
+            val isRestricted = status != AccountStatus.ACTIVE
             db.collection(COL_USERS).document(targetUid).update(
                 mapOf(
-                    "restricted" to restricted,
+                    "accountStatus" to status.firestoreValue,
+                    "restricted" to isRestricted,
                     "restrictionReason" to reason.take(300),
                     "updatedAt" to FieldValue.serverTimestamp()
                 )
             ).await()
             writeAuditLog(
                 adminUid,
-                if (restricted) "restrict_user" else "unrestrict_user",
+                "set_status_${status.firestoreValue}",
                 "profile",
                 targetUid,
                 reason
@@ -505,6 +786,25 @@ class CommunityRepository(
             requireUser()
             val snap = db.collection(COL_POSTS).document(postId).get().await()
             Result.success(snap.safeToPost())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.GET, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCommentByIdForAdmin(postId: String, commentId: String): Result<CommunityComment?> {
+        val path = "$COL_POSTS/$postId/$SUBCOL_COMMENTS/$commentId"
+        return try {
+            requireUser()
+            val snap = db.collection(COL_POSTS)
+                .document(postId)
+                .collection(SUBCOL_COMMENTS)
+                .document(commentId)
+                .get()
+                .await()
+            Result.success(snap.safeToComment())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -542,7 +842,8 @@ class CommunityRepository(
                         id = user.id.ifBlank { resolvedUid },
                         uid = resolvedUid,
                         displayName = user.displayName.ifBlank { "MyBooks Reader" },
-                        photoUrl = user.photoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL }
+                        photoUrl = user.photoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL },
+                        accountStatus = user.accountStatus.ifBlank { AccountStatus.ACTIVE.firestoreValue }
                     )
                 }
         } catch (_: Exception) {
@@ -553,6 +854,7 @@ class CommunityRepository(
                 photoUrl = getString("photoUrl")?.takeIf { it.isNotBlank() } ?: CommunityConstants.DEFAULT_USER_AVATAR_URL,
                 bio = getString("bio").orEmpty(),
                 badgeType = getString("badgeType") ?: BadgeType.NONE.firestoreValue,
+                accountStatus = getString("accountStatus") ?: AccountStatus.ACTIVE.firestoreValue,
                 restricted = (get("restricted") as? Boolean) ?: false,
                 restrictionReason = getString("restrictionReason").orEmpty()
             )
@@ -575,8 +877,27 @@ class CommunityRepository(
         }
     }
 
+    private fun DocumentSnapshot.safeToComment(): CommunityComment? {
+        if (!exists()) return null
+        return try {
+            toObject(CommunityComment::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                ?.let { comment ->
+                    comment.copy(
+                        id = comment.id.ifBlank { id },
+                        authorName = comment.authorName.ifBlank { "MyBooks Reader" },
+                        authorPhotoUrl = comment.authorPhotoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL }
+                    )
+                }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun QuerySnapshot.safeToPosts(): List<CommunityPost> =
         documents.mapNotNull { it.safeToPost() }
+
+    private fun QuerySnapshot.safeToComments(): List<CommunityComment> =
+        documents.mapNotNull { it.safeToComment() }
 
     private fun QuerySnapshot.safeToUsers(): List<CommunityUser> =
         documents.mapNotNull { it.safeToUser() }

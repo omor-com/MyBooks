@@ -14,8 +14,13 @@
           "enum": ["none", "blue", "red_admin"],
           "description": "Server/admin-controlled verification badge."
         },
-        "restricted": { "type": "boolean", "description": "Whether user posting is restricted by admin." },
-        "restrictionReason": { "type": "string", "description": "Optional admin restriction reason." },
+        "accountStatus": {
+          "type": "string",
+          "enum": ["active", "suspended", "banned", "deactivated"],
+          "description": "Account standing managed by official administration."
+        },
+        "restricted": { "type": "boolean", "description": "Whether user posting/commenting is restricted by admin." },
+        "restrictionReason": { "type": "string", "description": "Optional admin moderation notice or reason." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
       },
@@ -33,7 +38,7 @@
     },
     "CommunityPost": {
       "title": "CommunityPost",
-      "description": "Text-and-emoji Community discussion post with optional Google Drive link.",
+      "description": "Text-and-emoji Community discussion post with optional Google Drive book button.",
       "type": "object",
       "properties": {
         "authorUid": { "type": "string", "description": "Firebase Auth UID of post author." },
@@ -46,6 +51,7 @@
         },
         "content": { "type": "string", "description": "Post text and emojis (1..2000 chars)." },
         "driveLink": { "type": "string", "description": "Optional validated Google Drive/Docs HTTPS URL." },
+        "bookTitle": { "type": "string", "description": "Book title shown on the Google Drive button when driveLink is provided (0..120 chars)." },
         "visibility": {
           "type": "string",
           "enum": ["visible", "hidden", "removed"],
@@ -57,14 +63,43 @@
       },
       "required": ["authorUid", "authorName", "authorPhotoUrl", "authorBadge", "content", "visibility", "createdAt", "updatedAt"]
     },
+    "CommunityComment": {
+      "title": "CommunityComment",
+      "description": "Comment or threaded reply under a Community post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string", "description": "Parent post document ID." },
+        "authorUid": { "type": "string", "description": "Firebase Auth UID of comment author." },
+        "authorName": { "type": "string", "description": "Author display name." },
+        "authorPhotoUrl": { "type": "string", "description": "Author avatar URL." },
+        "authorBadge": {
+          "type": "string",
+          "enum": ["none", "blue", "red_admin"],
+          "description": "Verified badge matching author profile at creation."
+        },
+        "parentCommentId": { "type": "string", "description": "Optional parent comment ID when this item is a reply." },
+        "replyToAuthorName": { "type": "string", "description": "Optional display name of the comment author being replied to." },
+        "content": { "type": "string", "description": "Comment text and emojis (1..1000 chars)." },
+        "visibility": {
+          "type": "string",
+          "enum": ["visible", "hidden", "removed"],
+          "description": "Moderation visibility state."
+        },
+        "moderationNote": { "type": "string", "description": "Optional admin moderation note." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "authorUid", "authorName", "authorPhotoUrl", "authorBadge", "content", "visibility", "createdAt", "updatedAt"]
+    },
     "CommunityReport": {
       "title": "CommunityReport",
-      "description": "User-submitted report against a post or profile.",
+      "description": "User-submitted report against a post, comment, or profile.",
       "type": "object",
       "properties": {
         "reporterUid": { "type": "string", "description": "UID of reporting user." },
-        "targetType": { "type": "string", "enum": ["post", "profile"] },
-        "targetId": { "type": "string", "description": "Reported post ID or user UID." },
+        "targetType": { "type": "string", "enum": ["post", "comment", "profile"] },
+        "targetId": { "type": "string", "description": "Reported post ID, comment ID, or user UID." },
+        "parentPostId": { "type": "string", "description": "Optional parent post ID when targetType is comment." },
         "targetSummary": { "type": "string", "description": "Optional summary snippet." },
         "reason": {
           "type": "string",
@@ -89,7 +124,7 @@
       "properties": {
         "adminUid": { "type": "string" },
         "action": { "type": "string" },
-        "targetType": { "type": "string", "enum": ["post", "profile", "report"] },
+        "targetType": { "type": "string", "enum": ["post", "comment", "profile", "report"] },
         "targetId": { "type": "string" },
         "note": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
@@ -100,7 +135,7 @@
   "firestore": {
     "/community_users/{userId}": {
       "schema": { "$ref": "#/entities/CommunityUser" },
-      "description": "Community user profiles and admin-controlled badge/restriction states."
+      "description": "Community user profiles and admin-controlled badge/account status states."
     },
     "/admins/{userId}": {
       "schema": { "$ref": "#/entities/AdminMarker" },
@@ -109,6 +144,10 @@
     "/community_posts/{postId}": {
       "schema": { "$ref": "#/entities/CommunityPost" },
       "description": "Community book discussion posts."
+    },
+    "/community_posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/CommunityComment" },
+      "description": "Comments and threaded replies scoped under a Community post."
     },
     "/community_reports/{reportId}": {
       "schema": { "$ref": "#/entities/CommunityReport" },

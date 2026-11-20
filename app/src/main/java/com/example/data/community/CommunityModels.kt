@@ -25,6 +25,18 @@ enum class BadgeType(val firestoreValue: String) {
     }
 }
 
+enum class AccountStatus(val firestoreValue: String) {
+    ACTIVE("active"),
+    SUSPENDED("suspended"),
+    BANNED("banned"),
+    DEACTIVATED("deactivated");
+
+    companion object {
+        fun fromRaw(raw: String?): AccountStatus =
+            entries.firstOrNull { it.firestoreValue == raw } ?: ACTIVE
+    }
+}
+
 enum class PostVisibility(val firestoreValue: String) {
     VISIBLE("visible"),
     HIDDEN("hidden"),
@@ -72,6 +84,13 @@ object CommunityLinkValidator {
         if (trimmed.isEmpty()) return true
         return trimmed.length <= 500 && driveRegex.matches(trimmed)
     }
+
+    fun isValidOptionalBookTitle(driveLink: String?, bookTitle: String?): Boolean {
+        val cleanLink = driveLink?.trim().orEmpty()
+        val cleanTitle = bookTitle?.trim().orEmpty()
+        if (cleanLink.isEmpty()) return cleanTitle.length <= 120
+        return cleanTitle.isNotEmpty() && cleanTitle.length <= 120
+    }
 }
 
 @Keep
@@ -83,12 +102,24 @@ data class CommunityUser(
     val photoUrl: String = CommunityConstants.DEFAULT_USER_AVATAR_URL,
     val bio: String = "",
     val badgeType: String = BadgeType.NONE.firestoreValue,
+    val accountStatus: String = AccountStatus.ACTIVE.firestoreValue,
     val restricted: Boolean = false,
     val restrictionReason: String = "",
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
 ) {
     val badge: BadgeType get() = BadgeType.fromRaw(badgeType)
+
+    val effectiveStatus: AccountStatus
+        get() {
+            val parsed = AccountStatus.fromRaw(accountStatus)
+            return if (parsed != AccountStatus.ACTIVE) parsed
+            else if (restricted) AccountStatus.SUSPENDED
+            else AccountStatus.ACTIVE
+        }
+
+    val isWriteBlocked: Boolean
+        get() = restricted || effectiveStatus != AccountStatus.ACTIVE
 }
 
 @Keep
@@ -101,6 +132,7 @@ data class CommunityPost(
     val authorBadge: String = BadgeType.NONE.firestoreValue,
     val content: String = "",
     val driveLink: String = "",
+    val bookTitle: String = "",
     val visibility: String = PostVisibility.VISIBLE.firestoreValue,
     val moderationNote: String = "",
     @ServerTimestamp val createdAt: Timestamp? = null,
@@ -112,11 +144,33 @@ data class CommunityPost(
 
 @Keep
 @IgnoreExtraProperties
+data class CommunityComment(
+    @DocumentId val id: String = "",
+    val postId: String = "",
+    val authorUid: String = "",
+    val authorName: String = "",
+    val authorPhotoUrl: String = CommunityConstants.DEFAULT_USER_AVATAR_URL,
+    val authorBadge: String = BadgeType.NONE.firestoreValue,
+    val parentCommentId: String = "",
+    val replyToAuthorName: String = "",
+    val content: String = "",
+    val visibility: String = PostVisibility.VISIBLE.firestoreValue,
+    val moderationNote: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
+) {
+    val badge: BadgeType get() = BadgeType.fromRaw(authorBadge)
+    val commentVisibility: PostVisibility get() = PostVisibility.fromRaw(visibility)
+}
+
+@Keep
+@IgnoreExtraProperties
 data class CommunityReport(
     @DocumentId val id: String = "",
     val reporterUid: String = "",
     val targetType: String = "post",
     val targetId: String = "",
+    val parentPostId: String = "",
     val targetSummary: String = "",
     val reason: String = ReportReason.OTHER.firestoreValue,
     val details: String = "",

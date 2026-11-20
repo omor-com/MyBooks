@@ -1,6 +1,7 @@
 package com.example.data.community
 
 import android.util.Log
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
@@ -16,6 +17,32 @@ enum class OperationType(val value: String) {
     WRITE("write")
 }
 
+fun formatFriendlyCommunityError(error: Throwable?): String {
+    if (error == null) return "Unable to complete the Community request right now."
+    val fsError = generateSequence(error) { it.cause }
+        .filterIsInstance<FirebaseFirestoreException>()
+        .firstOrNull()
+    return when (fsError?.code) {
+        FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+            "Action not permitted. Check your sign-in session or account status."
+        FirebaseFirestoreException.Code.UNAVAILABLE,
+        FirebaseFirestoreException.Code.DEADLINE_EXCEEDED ->
+            "Community service is temporarily unreachable. Please check your internet connection and retry."
+        FirebaseFirestoreException.Code.UNAUTHENTICATED ->
+            "Please sign in with Google again to continue."
+        FirebaseFirestoreException.Code.NOT_FOUND ->
+            "The requested Community item could not be found."
+        else -> {
+            if (error.message == "DUPLICATE_REPORT") {
+                "You have already reported this item."
+            } else {
+                error.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "Something went wrong while communicating with Community."
+            }
+        }
+    }
+}
+
 fun handleFirestoreError(
     exception: Throwable,
     operationType: OperationType,
@@ -27,6 +54,7 @@ fun handleFirestoreError(
         ?: exception
 
     val currentUser = try {
+        FirebaseApp.getInstance()
         FirebaseAuth.getInstance().currentUser
     } catch (_: Exception) {
         null

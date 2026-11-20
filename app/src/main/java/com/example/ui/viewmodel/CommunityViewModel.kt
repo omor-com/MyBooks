@@ -3,6 +3,8 @@ package com.example.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.community.AccountStatus
+import com.example.data.community.CommunityComment
 import com.example.data.community.CommunityLinkValidator
 import com.example.data.community.CommunityPost
 import com.example.data.community.CommunityReport
@@ -12,6 +14,7 @@ import com.example.data.community.ModerationAuditLog
 import com.example.data.community.PostVisibility
 import com.example.data.community.ReportReason
 import com.example.data.community.ReportStatus
+import com.example.data.community.formatFriendlyCommunityError
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,6 +49,8 @@ class CommunityViewModel(
 ) : ViewModel() {
 
     private val _pageLimit = MutableStateFlow(25L)
+    private val _commentLimit = MutableStateFlow(40L)
+    private val _activePostIdForComments = MutableStateFlow<String?>(null)
     private val _retryTrigger = MutableStateFlow(0)
     private val _isTrustedAdmin = MutableStateFlow(false)
     val isTrustedAdmin: StateFlow<Boolean> = _isTrustedAdmin.asStateFlow()
@@ -80,8 +85,31 @@ class CommunityViewModel(
                     if (fsError == null && error is CancellationException) throw error
                     val root = fsError ?: error
                     Log.w(TAG, "Error observing feed", root)
-                    emit(UiState.Error(root.localizedMessage ?: root.message ?: "Failed to load community feed"))
+                    emit(UiState.Error(formatFriendlyCommunityError(root)))
                 }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
+
+    val activePostCommentsState: StateFlow<UiState<List<CommunityComment>>> = combine(
+        _activePostIdForComments,
+        _commentLimit
+    ) { postId, limit -> postId to limit }
+        .flatMapLatest { (postId, limit) ->
+            if (postId.isNullOrBlank()) {
+                flowOf(UiState.Success(emptyList()))
+            } else {
+                repository.observeCommentsForPost(postId, limit)
+                    .map<List<CommunityComment>, UiState<List<CommunityComment>>> { UiState.Success(it) }
+                    .catch { error ->
+                        val fsError = generateSequence(error) { it.cause }
+                            .filterIsInstance<FirebaseFirestoreException>()
+                            .firstOrNull()
+                        if (fsError == null && error is CancellationException) throw error
+                        val root = fsError ?: error
+                        Log.w(TAG, "Error observing comments for $postId", root)
+                        emit(UiState.Error(formatFriendlyCommunityError(root)))
+                    }
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
 
@@ -95,7 +123,7 @@ class CommunityViewModel(
                         .filterIsInstance<FirebaseFirestoreException>()
                         .firstOrNull()
                     if (fsError == null && error is CancellationException) throw error
-                    emit(UiState.Error((fsError ?: error).message ?: "Failed to load reports"))
+                    emit(UiState.Error(formatFriendlyCommunityError(fsError ?: error)))
                 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
@@ -110,7 +138,7 @@ class CommunityViewModel(
                         .filterIsInstance<FirebaseFirestoreException>()
                         .firstOrNull()
                     if (fsError == null && error is CancellationException) throw error
-                    emit(UiState.Error((fsError ?: error).message ?: "Failed to load users"))
+                    emit(UiState.Error(formatFriendlyCommunityError(fsError ?: error)))
                 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
@@ -125,7 +153,7 @@ class CommunityViewModel(
                         .filterIsInstance<FirebaseFirestoreException>()
                         .firstOrNull()
                     if (fsError == null && error is CancellationException) throw error
-                    emit(UiState.Error((fsError ?: error).message ?: "Failed to load audit logs"))
+                    emit(UiState.Error(formatFriendlyCommunityError(fsError ?: error)))
                 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
@@ -136,6 +164,19 @@ class CommunityViewModel(
 
     fun loadMorePosts() {
         _pageLimit.value = (_pageLimit.value + 25L).coerceAtMost(200L)
+    }
+
+    fun openPostComments(postId: String) {
+        _commentLimit.value = 40L
+        _activePostIdForComments.value = postId
+    }
+
+    fun closePostComments() {
+        _activePostIdForComments.value = null
+    }
+
+    fun loadMoreComments() {
+        _commentLimit.value = (_commentLimit.value + 40L).coerceAtMost(200L)
     }
 
     fun refreshProfileAndRole(triggerFeedReload: Boolean = true) {
@@ -154,7 +195,7 @@ class CommunityViewModel(
         }
     }
 
-    fun createPost(content: String, driveLink: String) {
+    fun createPost(content: String, driveLink: String, bookTitle: String) {
         val profile = currentUserProfile.value ?: return
         if (!CommunityLinkValidator.isValidOptionalDriveLink(driveLink)) {
             viewModelScope.launch {
@@ -162,14 +203,45 @@ class CommunityViewModel(
             }
             return
         }
+        if (!CommunityLinkValidator.isValidOptionalBookTitle(driveLink, bookTitle)) {
+            viewModelScope.launch {
+                _events.emit(CommunityEvent.Message("Please enter a book title for the Google Drive link."))
+            }
+            return
+        }
         viewModelScope.launch {
             _isSubmitting.value = true
-            val res = repository.createPost(profile, content, driveLink)
+            val res = repository.createPost(profile, content, driveLink, bookTitle)
             _isSubmitting.value = false
             res.onSuccess {
                 _events.emit(CommunityEvent.Message("Post published"))
             }.onFailure { err ->
-                _events.emit(CommunityEvent.Message(err.localizedMessage ?: "Failed to publish post"))
+                _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(err)))
+            }
+        }
+    }
+
+    fun editOwnPost(postId: String, content: String, driveLink: String, bookTitle: String) {
+        if (!CommunityLinkValidator.isValidOptionalDriveLink(driveLink)) {
+            viewModelScope.launch {
+                _events.emit(CommunityEvent.Message("Invalid Google Drive link format"))
+            }
+            return
+        }
+        if (!CommunityLinkValidator.isValidOptionalBookTitle(driveLink, bookTitle)) {
+            viewModelScope.launch {
+                _events.emit(CommunityEvent.Message("Please enter a book title for the Google Drive link."))
+            }
+            return
+        }
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            val res = repository.editOwnPost(postId, content, driveLink, bookTitle)
+            _isSubmitting.value = false
+            res.onSuccess {
+                _events.emit(CommunityEvent.Message("Post updated"))
+            }.onFailure { err ->
+                _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(err)))
             }
         }
     }
@@ -178,7 +250,38 @@ class CommunityViewModel(
         viewModelScope.launch {
             repository.deleteOwnPost(postId)
                 .onSuccess { _events.emit(CommunityEvent.Message("Post deleted")) }
-                .onFailure { _events.emit(CommunityEvent.Message(it.localizedMessage ?: "Failed to delete post")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
+        }
+    }
+
+    fun addComment(
+        postId: String,
+        content: String,
+        parentCommentId: String = "",
+        replyToAuthorName: String = ""
+    ) {
+        val profile = currentUserProfile.value ?: return
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            val res = repository.addComment(profile, postId, content, parentCommentId, replyToAuthorName)
+            _isSubmitting.value = false
+            res.onSuccess {
+                _events.emit(
+                    CommunityEvent.Message(
+                        if (parentCommentId.isBlank()) "Comment posted" else "Reply posted"
+                    )
+                )
+            }.onFailure { err ->
+                _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(err)))
+            }
+        }
+    }
+
+    fun deleteOwnComment(postId: String, commentId: String) {
+        viewModelScope.launch {
+            repository.deleteOwnComment(postId, commentId)
+                .onSuccess { _events.emit(CommunityEvent.Message("Comment deleted")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 
@@ -186,7 +289,7 @@ class CommunityViewModel(
         viewModelScope.launch {
             repository.updateOwnProfile(displayName, bio)
                 .onSuccess { _events.emit(CommunityEvent.Message("Profile updated")) }
-                .onFailure { _events.emit(CommunityEvent.Message(it.localizedMessage ?: "Failed to update profile")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 
@@ -195,20 +298,16 @@ class CommunityViewModel(
         targetId: String,
         targetSummary: String,
         reason: ReportReason,
-        details: String
+        details: String,
+        parentPostId: String = ""
     ) {
         viewModelScope.launch {
-            repository.submitReport(targetType, targetId, targetSummary, reason, details)
+            repository.submitReport(targetType, targetId, targetSummary, reason, details, parentPostId)
                 .onSuccess {
                     _events.emit(CommunityEvent.Message("Report submitted for moderation review."))
                 }
                 .onFailure { err ->
-                    val msg = if (err.message == "DUPLICATE_REPORT") {
-                        "You have already reported this item."
-                    } else {
-                        err.localizedMessage ?: "Failed to submit report"
-                    }
-                    _events.emit(CommunityEvent.Message(msg))
+                    _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(err)))
                 }
         }
     }
@@ -217,12 +316,16 @@ class CommunityViewModel(
         return repository.getUserProfile(uid).getOrNull()
     }
 
+    suspend fun loadUserVisiblePosts(uid: String): List<CommunityPost> {
+        return repository.getVisiblePostsByUser(uid).getOrDefault(emptyList())
+    }
+
     // --- Admin Actions ---
     fun adminUpdateReport(reportId: String, status: ReportStatus, note: String) {
         viewModelScope.launch {
             repository.adminUpdateReportStatus(reportId, status, note)
                 .onSuccess { _events.emit(CommunityEvent.Message("Report updated")) }
-                .onFailure { _events.emit(CommunityEvent.Message(it.localizedMessage ?: "Admin action failed")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 
@@ -230,7 +333,31 @@ class CommunityViewModel(
         viewModelScope.launch {
             repository.adminSetPostVisibility(postId, visibility, note)
                 .onSuccess { _events.emit(CommunityEvent.Message("Post visibility updated to ${visibility.firestoreValue}")) }
-                .onFailure { _events.emit(CommunityEvent.Message(it.localizedMessage ?: "Admin action failed")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
+        }
+    }
+
+    fun adminDeletePost(postId: String, note: String) {
+        viewModelScope.launch {
+            repository.adminDeletePost(postId, note)
+                .onSuccess { _events.emit(CommunityEvent.Message("Post removed")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
+        }
+    }
+
+    fun adminSetCommentVisibility(postId: String, commentId: String, visibility: PostVisibility, note: String) {
+        viewModelScope.launch {
+            repository.adminSetCommentVisibility(postId, commentId, visibility, note)
+                .onSuccess { _events.emit(CommunityEvent.Message("Comment updated")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
+        }
+    }
+
+    fun adminDeleteComment(postId: String, commentId: String, note: String) {
+        viewModelScope.launch {
+            repository.adminDeleteComment(postId, commentId, note)
+                .onSuccess { _events.emit(CommunityEvent.Message("Comment removed")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 
@@ -238,20 +365,24 @@ class CommunityViewModel(
         viewModelScope.launch {
             repository.adminSetUserBlueBadge(targetUid, grantBlue)
                 .onSuccess { _events.emit(CommunityEvent.Message("Verification badge updated")) }
-                .onFailure { _events.emit(CommunityEvent.Message(it.localizedMessage ?: "Badge update failed")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 
-    fun adminToggleUserRestriction(targetUid: String, restrict: Boolean, reason: String) {
+    fun adminSetAccountStatus(targetUid: String, status: AccountStatus, reason: String) {
         viewModelScope.launch {
-            repository.adminSetUserRestriction(targetUid, restrict, reason)
-                .onSuccess { _events.emit(CommunityEvent.Message("User restriction updated")) }
-                .onFailure { _events.emit(CommunityEvent.Message(it.localizedMessage ?: "Restriction update failed")) }
+            repository.adminSetUserAccountStatus(targetUid, status, reason)
+                .onSuccess { _events.emit(CommunityEvent.Message("Account status set to ${status.firestoreValue}")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 
     suspend fun adminInspectPost(postId: String): CommunityPost? {
         return repository.getPostByIdForAdmin(postId).getOrNull()
+    }
+
+    suspend fun adminInspectComment(postId: String, commentId: String): CommunityComment? {
+        return repository.getCommentByIdForAdmin(postId, commentId).getOrNull()
     }
 
     private companion object {

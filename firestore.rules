@@ -38,6 +38,10 @@ service cloud.firestore {
       return badge in ['none', 'blue', 'red_admin'];
     }
 
+    function isValidAccountStatus(status) {
+      return status in ['active', 'suspended', 'banned', 'deactivated'];
+    }
+
     function isValidDriveLink(url) {
       return url is string &&
              url.size() <= 500 &&
@@ -46,13 +50,15 @@ service cloud.firestore {
 
     function isValidCommunityUser(data) {
       return data.keys().hasAll(['uid', 'displayName', 'photoUrl', 'badgeType', 'restricted', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['uid', 'displayName', 'photoUrl', 'bio', 'badgeType', 'restricted', 'restrictionReason', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'displayName', 'photoUrl', 'bio', 'badgeType', 'accountStatus', 'restricted', 'restrictionReason', 'createdAt', 'updatedAt']) &&
              data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
              data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
              data.photoUrl is string && data.photoUrl.size() <= 500 &&
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
              isValidBadgeType(data.badgeType) &&
+             (!('accountStatus' in data) || isValidAccountStatus(data.accountStatus)) &&
              data.restricted is bool &&
+             (!('accountStatus' in data) || ((data.accountStatus == 'active' && data.restricted == false) || (data.accountStatus != 'active' && data.restricted == true))) &&
              (!('restrictionReason' in data) || (data.restrictionReason is string && data.restrictionReason.size() <= 300)) &&
              data.createdAt is timestamp && data.createdAt <= request.time &&
              data.updatedAt is timestamp && data.updatedAt <= request.time;
@@ -63,8 +69,10 @@ service cloud.firestore {
     }
 
     function isAuthorNotRestricted(uid) {
+      let profile = get(/databases/$(database)/documents/community_users/$(uid)).data;
       return userProfileExists(uid) &&
-             get(/databases/$(database)/documents/community_users/$(uid)).data.restricted == false;
+             profile.restricted == false &&
+             (!('accountStatus' in profile) || profile.accountStatus == 'active');
     }
 
     function getAuthorBadge(uid) {
@@ -73,13 +81,31 @@ service cloud.firestore {
 
     function isValidCommunityPost(data) {
       return data.keys().hasAll(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'visibility', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'driveLink', 'visibility', 'moderationNote', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'driveLink', 'bookTitle', 'visibility', 'moderationNote', 'createdAt', 'updatedAt']) &&
              data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
              data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
              data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500 &&
              isValidBadgeType(data.authorBadge) &&
              data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
              (!('driveLink' in data) || isValidDriveLink(data.driveLink)) &&
+             (!('bookTitle' in data) || (data.bookTitle is string && data.bookTitle.size() <= 120)) &&
+             data.visibility in ['visible', 'hidden', 'removed'] &&
+             (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCommunityComment(data, expectedPostId) {
+      return data.keys().hasAll(['postId', 'authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'visibility', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['postId', 'authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'parentCommentId', 'replyToAuthorName', 'content', 'visibility', 'moderationNote', 'createdAt', 'updatedAt']) &&
+             data.postId == expectedPostId &&
+             data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+             data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500 &&
+             isValidBadgeType(data.authorBadge) &&
+             (!('parentCommentId' in data) || (data.parentCommentId is string && data.parentCommentId.size() <= 128)) &&
+             (!('replyToAuthorName' in data) || (data.replyToAuthorName is string && data.replyToAuthorName.size() <= 60)) &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 1000 &&
              data.visibility in ['visible', 'hidden', 'removed'] &&
              (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 300)) &&
              data.createdAt is timestamp && data.createdAt <= request.time &&
@@ -88,10 +114,11 @@ service cloud.firestore {
 
     function isValidCommunityReport(data) {
       return data.keys().hasAll(['reporterUid', 'targetType', 'targetId', 'reason', 'status', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['reporterUid', 'targetType', 'targetId', 'targetSummary', 'reason', 'details', 'status', 'reviewedBy', 'moderationAction', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['reporterUid', 'targetType', 'targetId', 'parentPostId', 'targetSummary', 'reason', 'details', 'status', 'reviewedBy', 'moderationAction', 'createdAt', 'updatedAt']) &&
              data.reporterUid is string && data.reporterUid.size() >= 1 && data.reporterUid.size() <= 128 &&
-             data.targetType in ['post', 'profile'] &&
+             data.targetType in ['post', 'comment', 'profile'] &&
              data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             (!('parentPostId' in data) || (data.parentPostId is string && data.parentPostId.size() <= 128)) &&
              (!('targetSummary' in data) || (data.targetSummary is string && data.targetSummary.size() <= 200)) &&
              data.reason in ['harassment', 'insults', 'spam', 'malicious_link', 'impersonation', 'harmful_content', 'unlawful_content', 'other'] &&
              (!('details' in data) || (data.details is string && data.details.size() <= 500)) &&
@@ -107,7 +134,7 @@ service cloud.firestore {
              data.keys().hasOnly(['adminUid', 'action', 'targetType', 'targetId', 'note', 'createdAt']) &&
              data.adminUid is string && data.adminUid.size() >= 1 && data.adminUid.size() <= 128 &&
              data.action is string && data.action.size() >= 1 && data.action.size() <= 80 &&
-             data.targetType in ['post', 'profile', 'report'] &&
+             data.targetType in ['post', 'comment', 'profile', 'report'] &&
              data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
              (!('note' in data) || (data.note is string && data.note.size() <= 300)) &&
              data.createdAt is timestamp && data.createdAt <= request.time;
@@ -128,6 +155,7 @@ service cloud.firestore {
                        request.auth.uid == userId &&
                        incoming().uid == request.auth.uid &&
                        incoming().restricted == false &&
+                       (!('accountStatus' in incoming()) || incoming().accountStatus == 'active') &&
                        !('restrictionReason' in incoming()) &&
                        (
                          incoming().badgeType == 'none' ||
@@ -144,16 +172,21 @@ service cloud.firestore {
                            request.auth.uid == userId &&
                            incoming().badgeType == existing().badgeType &&
                            incoming().restricted == existing().restricted &&
+                           (!('accountStatus' in incoming()) ? !('accountStatus' in existing()) : incoming().accountStatus == existing().accountStatus) &&
                            (!('restrictionReason' in incoming()) ? !('restrictionReason' in existing()) : incoming().restrictionReason == existing().restrictionReason) &&
                            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'bio', 'updatedAt'])
                          ) ||
                          (
                            isAdmin() &&
-                           // Protected official admin cannot lose red_admin or be restricted
-                           !(existing().badgeType == 'red_admin' && (incoming().badgeType != 'red_admin' || incoming().restricted == true)) &&
+                           // Protected official admin cannot lose red_admin or be restricted/suspended/banned/deactivated
+                           !(existing().badgeType == 'red_admin' && (
+                             incoming().badgeType != 'red_admin' ||
+                             incoming().restricted == true ||
+                             ('accountStatus' in incoming() && incoming().accountStatus != 'active')
+                           )) &&
                            // Only bootstrapped admin account receives red_admin; admins grant/revoke 'blue' or 'none' for others
                            (incoming().badgeType != 'red_admin' || existing().badgeType == 'red_admin') &&
-                           incoming().diff(existing()).affectedKeys().hasOnly(['badgeType', 'restricted', 'restrictionReason', 'updatedAt'])
+                           incoming().diff(existing()).affectedKeys().hasOnly(['badgeType', 'accountStatus', 'restricted', 'restrictionReason', 'updatedAt'])
                          )
                        );
 
@@ -190,7 +223,7 @@ service cloud.firestore {
                            incoming().authorBadge == existing().authorBadge &&
                            incoming().visibility == existing().visibility &&
                            (!('moderationNote' in incoming()) ? !('moderationNote' in existing()) : incoming().moderationNote == existing().moderationNote) &&
-                           incoming().diff(existing()).affectedKeys().hasOnly(['content', 'driveLink', 'updatedAt'])
+                           incoming().diff(existing()).affectedKeys().hasOnly(['content', 'driveLink', 'bookTitle', 'updatedAt'])
                          ) ||
                          (
                            isAdmin() &&
@@ -201,6 +234,66 @@ service cloud.firestore {
       allow delete: if isSignedIn() &&
                        isValidId(postId) &&
                        (existing().authorUid == request.auth.uid || isAdmin());
+
+      match /comments/{commentId} {
+        allow get: if isSignedIn() &&
+                      isValidId(postId) &&
+                      isValidId(commentId) &&
+                      (existing().visibility == 'visible' || existing().authorUid == request.auth.uid || isAdmin());
+
+        allow list: if isSignedIn() &&
+                       isValidId(postId) &&
+                       (existing().visibility == 'visible' || existing().authorUid == request.auth.uid || isAdmin());
+
+        allow create: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(commentId) &&
+                         exists(/databases/$(database)/documents/community_posts/$(postId)) &&
+                         get(/databases/$(database)/documents/community_posts/$(postId)).data.visibility == 'visible' &&
+                         isValidCommunityComment(incoming(), postId) &&
+                         incoming().authorUid == request.auth.uid &&
+                         incoming().visibility == 'visible' &&
+                         !('moderationNote' in incoming()) &&
+                         isAuthorNotRestricted(request.auth.uid) &&
+                         incoming().authorBadge == getAuthorBadge(request.auth.uid) &&
+                         (
+                           !('parentCommentId' in incoming()) ||
+                           incoming().parentCommentId.size() == 0 ||
+                           (
+                             isValidId(incoming().parentCommentId) &&
+                             exists(/databases/$(database)/documents/community_posts/$(postId)/comments/$(incoming().parentCommentId))
+                           )
+                         );
+
+        allow update: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(commentId) &&
+                         isValidCommunityComment(incoming(), postId) &&
+                         incoming().postId == existing().postId &&
+                         incoming().authorUid == existing().authorUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         (
+                           (
+                             existing().authorUid == request.auth.uid &&
+                             existing().visibility == 'visible' &&
+                             isAuthorNotRestricted(request.auth.uid) &&
+                             incoming().authorBadge == existing().authorBadge &&
+                             incoming().visibility == existing().visibility &&
+                             (!('parentCommentId' in incoming()) ? !('parentCommentId' in existing()) : incoming().parentCommentId == existing().parentCommentId) &&
+                             (!('moderationNote' in incoming()) ? !('moderationNote' in existing()) : incoming().moderationNote == existing().moderationNote) &&
+                             incoming().diff(existing()).affectedKeys().hasOnly(['content', 'updatedAt'])
+                           ) ||
+                           (
+                             isAdmin() &&
+                             incoming().diff(existing()).affectedKeys().hasOnly(['visibility', 'moderationNote', 'updatedAt'])
+                           )
+                         );
+
+        allow delete: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(commentId) &&
+                         (existing().authorUid == request.auth.uid || isAdmin());
+      }
     }
 
     match /community_reports/{reportId} {
@@ -226,6 +319,7 @@ service cloud.firestore {
                        incoming().reporterUid == existing().reporterUid &&
                        incoming().targetType == existing().targetType &&
                        incoming().targetId == existing().targetId &&
+                       (!('parentPostId' in incoming()) ? !('parentPostId' in existing()) : incoming().parentPostId == existing().parentPostId) &&
                        incoming().createdAt == existing().createdAt &&
                        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewedBy', 'moderationAction', 'updatedAt']);
 
