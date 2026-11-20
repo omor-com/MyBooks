@@ -24,6 +24,10 @@ enum class ReaderFontFamilyOption {
     DEFAULT, BENGALI_SANS, SERIF, SANS
 }
 
+enum class PdfFitMode {
+    FIT_PAGE, FIT_WIDTH
+}
+
 @Serializable
 data class UserPreferences(
     val appLanguage: String = "bn",
@@ -33,6 +37,7 @@ data class UserPreferences(
     val readerLineSpacing: Float = 1.55f,
     val readerMarginDp: Int = 20,
     val readerFontFamilyName: String = ReaderFontFamilyOption.BENGALI_SANS.name,
+    val readerPdfFitModeName: String = PdfFitMode.FIT_PAGE.name,
     val readerKeepScreenOn: Boolean = false,
     val readerFullscreen: Boolean = false,
     val readerShowProgress: Boolean = true,
@@ -48,6 +53,10 @@ data class UserPreferences(
     val readerFontFamily: ReaderFontFamilyOption
         get() = enumValues<ReaderFontFamilyOption>().firstOrNull { it.name == readerFontFamilyName }
             ?: ReaderFontFamilyOption.BENGALI_SANS
+
+    val readerPdfFitMode: PdfFitMode
+        get() = enumValues<PdfFitMode>().firstOrNull { it.name == readerPdfFitModeName }
+            ?: PdfFitMode.FIT_PAGE
 }
 
 class UserPreferencesRepository(
@@ -63,6 +72,7 @@ class UserPreferencesRepository(
         val READER_LINE_SPACING = floatPreferencesKey("reader_line_spacing")
         val READER_MARGIN_DP = intPreferencesKey("reader_margin_dp")
         val READER_FONT_FAMILY = stringPreferencesKey("reader_font_family")
+        val READER_PDF_FIT_MODE = stringPreferencesKey("reader_pdf_fit_mode")
         val READER_KEEP_SCREEN_ON = booleanPreferencesKey("reader_keep_screen_on")
         val READER_FULLSCREEN = booleanPreferencesKey("reader_fullscreen")
         val READER_SHOW_PROGRESS = booleanPreferencesKey("reader_show_progress")
@@ -83,6 +93,7 @@ class UserPreferencesRepository(
                 readerLineSpacing = (prefs[Keys.READER_LINE_SPACING] ?: 1.55f).coerceIn(1.1f, 2.2f),
                 readerMarginDp = (prefs[Keys.READER_MARGIN_DP] ?: 20).coerceIn(8, 48),
                 readerFontFamilyName = prefs[Keys.READER_FONT_FAMILY] ?: ReaderFontFamilyOption.BENGALI_SANS.name,
+                readerPdfFitModeName = prefs[Keys.READER_PDF_FIT_MODE] ?: PdfFitMode.FIT_PAGE.name,
                 readerKeepScreenOn = prefs[Keys.READER_KEEP_SCREEN_ON] ?: false,
                 readerFullscreen = prefs[Keys.READER_FULLSCREEN] ?: false,
                 readerShowProgress = prefs[Keys.READER_SHOW_PROGRESS] ?: true,
@@ -120,6 +131,10 @@ class UserPreferencesRepository(
         dataStore.edit { it[Keys.READER_FONT_FAMILY] = option.name }
     }
 
+    suspend fun setReaderPdfFitMode(mode: PdfFitMode) {
+        dataStore.edit { it[Keys.READER_PDF_FIT_MODE] = mode.name }
+    }
+
     suspend fun setKeepScreenOn(enabled: Boolean) {
         dataStore.edit { it[Keys.READER_KEEP_SCREEN_ON] = enabled }
     }
@@ -155,6 +170,7 @@ class UserPreferencesRepository(
             it[Keys.READER_LINE_SPACING] = 1.55f
             it[Keys.READER_MARGIN_DP] = 20
             it[Keys.READER_FONT_FAMILY] = ReaderFontFamilyOption.BENGALI_SANS.name
+            it[Keys.READER_PDF_FIT_MODE] = PdfFitMode.FIT_PAGE.name
             it[Keys.READER_KEEP_SCREEN_ON] = false
             it[Keys.READER_FULLSCREEN] = false
             it[Keys.READER_SHOW_PROGRESS] = true
@@ -170,6 +186,7 @@ class UserPreferencesRepository(
             it[Keys.READER_LINE_SPACING] = prefs.readerLineSpacing.coerceIn(1.1f, 2.2f)
             it[Keys.READER_MARGIN_DP] = prefs.readerMarginDp.coerceIn(8, 48)
             it[Keys.READER_FONT_FAMILY] = prefs.readerFontFamily.name
+            it[Keys.READER_PDF_FIT_MODE] = prefs.readerPdfFitMode.name
             it[Keys.READER_KEEP_SCREEN_ON] = prefs.readerKeepScreenOn
             it[Keys.READER_FULLSCREEN] = prefs.readerFullscreen
             it[Keys.READER_SHOW_PROGRESS] = prefs.readerShowProgress

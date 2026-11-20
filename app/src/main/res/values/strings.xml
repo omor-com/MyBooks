@@ -74,7 +74,15 @@
     <string name="library_delete_keep_notes">Keep personal notes</string>
     <string name="library_delete_remove_all">Remove book &amp; its notes</string>
     <string name="library_edit_metadata">Edit Book Details</string>
+    <string name="library_original_filename">Original Filename (Read-Only)</string>
     <string name="library_change_cover">Change Cover</string>
+    <string name="library_restore_cover">Restore Default Cover</string>
+    <string name="library_manage_categories">Manage Categories</string>
+    <string name="library_manage_categories_note">Renaming or deleting a category keeps all your books, bookmarks, and notes intact. Books in a deleted category become uncategorized.</string>
+    <string name="library_category_name_hint">Category name</string>
+    <string name="library_new_category">Add Category</string>
+    <string name="library_no_categories">No custom categories yet</string>
+    <string name="library_rename_category">Rename Category</string>
     <string name="library_manage_collections">Collections &amp; Tags</string>
     <string name="library_new_collection">New Collection</string>
     <string name="library_collection_name_hint">Collection name</string>
@@ -125,6 +133,9 @@
     <string name="reader_note_saved">Note saved</string>
     <string name="reader_highlight_saved">Highlight saved</string>
     <string name="reader_save_highlight">Save Highlight</string>
+    <string name="reader_select_file_again">Select File Again</string>
+    <string name="reader_add_to_library">Add to MyBooks Library</string>
+    <string name="reader_add_to_library_short">Save Book</string>
 
     <!-- Bookmarks & Notes -->
     <string name="bookmarks_title">Bookmarks &amp; Notes</string>
@@ -147,6 +158,8 @@
     <string name="community_title">MyBooks Community</string>
     <string name="community_offline_title">You are offline</string>
     <string name="community_offline_subtitle">Community requires an internet connection. Your local library, books, bookmarks, and notes continue working offline.</string>
+    <string name="community_unavailable_title">Community Unavailable</string>
+    <string name="community_unavailable_subtitle">Online Community services are not configured in this build. Your offline library, books, bookmarks, and notes continue working normally.</string>
     <string name="community_sign_in_title">Join the Book Community</string>
     <string name="community_sign_in_subtitle">Sign in with Google to discuss books, share thoughts with emojis, and optionally post Google Drive links. Reading local books never requires an account.</string>
     <string name="community_sign_in_button">Sign in with Google</string>

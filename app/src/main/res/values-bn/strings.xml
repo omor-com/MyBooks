@@ -74,7 +74,15 @@
     <string name="library_delete_keep_notes">ব্যক্তিগত নোট সংরক্ষণ করুন</string>
     <string name="library_delete_remove_all">বই ও নোট সব সরান</string>
     <string name="library_edit_metadata">বইয়ের তথ্য সম্পাদনা</string>
+    <string name="library_original_filename">মূল ফাইলের নাম (অপরিবর্তনযোগ্য)</string>
     <string name="library_change_cover">কভার পরিবর্তন</string>
+    <string name="library_restore_cover">ডিফল্ট কভার ফিরিয়ে আনুন</string>
+    <string name="library_manage_categories">বিভাগ পরিচালনা</string>
+    <string name="library_manage_categories_note">কোনো বিভাগ পুনঃনামকরণ বা মুছে ফেললে আপনার বই, বুকমার্ক ও নোট অক্ষত থাকবে। মুছে ফেলা বিভাগের বইগুলো সাধারণ তালিকায় থাকবে।</string>
+    <string name="library_category_name_hint">বিভাগের নাম</string>
+    <string name="library_new_category">বিভাগ যোগ করুন</string>
+    <string name="library_no_categories">এখনও কোনো বিভাগ তৈরি করা হয়নি</string>
+    <string name="library_rename_category">বিভাগের নাম পরিবর্তন</string>
     <string name="library_manage_collections">সংগ্রহ ও ট্যাগ</string>
     <string name="library_new_collection">নতুন সংগ্রহ</string>
     <string name="library_collection_name_hint">সংগ্রহের নাম</string>
@@ -125,6 +133,9 @@
     <string name="reader_note_saved">নোট সংরক্ষিত হয়েছে</string>
     <string name="reader_highlight_saved">হাইলাইট সংরক্ষিত হয়েছে</string>
     <string name="reader_save_highlight">হাইলাইট সংরক্ষণ</string>
+    <string name="reader_select_file_again">ফাইল আবার নির্বাচন করুন</string>
+    <string name="reader_add_to_library">MyBooks লাইব্রেরিতে যুক্ত করুন</string>
+    <string name="reader_add_to_library_short">লাইব্রেরিতে রাখুন</string>
 
     <!-- Bookmarks & Notes -->
     <string name="bookmarks_title">বুকমার্ক ও নোট</string>
@@ -147,6 +158,8 @@
     <string name="community_title">MyBooks কমিউনিটি</string>
     <string name="community_offline_title">আপনি অফলাইনে আছেন</string>
     <string name="community_offline_subtitle">কমিউনিটি ব্যবহার করতে ইন্টারনেট সংযোগ প্রয়োজন। তবে আপনার লাইব্রেরি, বই, বুকমার্ক ও নোট অফলাইনেই কাজ করবে।</string>
+    <string name="community_unavailable_title">কমিউনিটি বর্তমানে উপলব্ধ নয়</string>
+    <string name="community_unavailable_subtitle">এই বিল্ডে অনলাইন কমিউনিটি কনফিগার করা হয়নি। তবে আপনার অফলাইন লাইব্রেরি, বই, বুকমার্ক ও নোট স্বাভাবিকভাবেই কাজ করবে।</string>
     <string name="community_sign_in_title">বইপ্রেমীদের কমিউনিটিতে যোগ দিন</string>
     <string name="community_sign_in_subtitle">বই নিয়ে আলোচনা করতে, ইমোজি ও টেক্সট পোস্ট করতে এবং ঐচ্ছিকভাবে Google Drive লিংক শেয়ার করতে Google দিয়ে সাইন ইন করুন। স্থানীয় বই পড়তে কোনো অ্যাকাউন্ট লাগে না।</string>
     <string name="community_sign_in_button">Google দিয়ে সাইন ইন করুন</string>

@@ -319,7 +319,39 @@ class LibraryViewModel(
 
     fun setBookCover(bookId: String, imageUri: Uri) {
         viewModelScope.launch {
-            repository.setBookCover(bookId, imageUri)
+            val ok = repository.setBookCover(bookId, imageUri)
+            if (!ok) {
+                _events.emit(LibraryEvent.ShowMessage("Could not decode selected image"))
+            }
+        }
+    }
+
+    fun restoreDefaultCover(bookId: String) {
+        viewModelScope.launch {
+            repository.restoreDefaultCover(bookId)
+        }
+    }
+
+    fun createCategory(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            repository.createCategory(name)
+        }
+    }
+
+    fun renameCategory(categoryId: String, newName: String) {
+        if (newName.isBlank()) return
+        viewModelScope.launch {
+            repository.renameCategory(categoryId, newName)
+        }
+    }
+
+    fun deleteCategory(categoryId: String) {
+        if (_selectedCategoryId.value == categoryId) {
+            _selectedCategoryId.value = null
+        }
+        viewModelScope.launch {
+            repository.deleteCategory(categoryId)
         }
     }
 

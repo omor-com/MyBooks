@@ -16,6 +16,7 @@ import com.example.data.community.CommunityPost
 import com.example.data.local.MyBooksDatabase
 import com.example.data.local.entity.BookEntity
 import com.example.data.local.entity.NoteEntity
+import com.example.data.preferences.PdfFitMode
 import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.reader.DocumentFormat
 import com.example.data.reader.DocumentValidator
@@ -25,6 +26,9 @@ import com.example.data.reader.SafeHtmlTextParser
 import com.example.data.reader.TextBlock
 import com.example.data.repository.LibraryRepository
 import com.example.ui.theme.AppThemeMode
+import com.example.ui.viewmodel.ReaderContentState
+import com.example.ui.viewmodel.ReaderViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -312,5 +316,246 @@ class MyBooksUnitAndRobolectricTest {
             .let { activity ->
                 assertNotNull(activity.window)
             }
+    }
+
+    @Test
+    fun `firebase availability guard does not crash when config is absent`() {
+        val result = runCatching { FirebaseAvailability.ensureInitialized(context) }
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `category CRUD renames safely rejects duplicates and keeps books when deleted`() = runBlocking {
+        val txtFile = File(tempDir, "cat_book.txt").apply { writeText("Hello World") }
+        val imported = (libraryRepo.importDocument(Uri.fromFile(txtFile), takePersistablePermission = false)
+            as com.example.data.repository.ImportOutcome.Imported).book
+
+        val fiction = libraryRepo.createCategory("Fiction")
+        assertNotNull(fiction)
+        val duplicate = libraryRepo.createCategory("fiction")
+        assertEquals(fiction!!.id, duplicate?.id)
+
+        val sciFi = libraryRepo.createCategory("Sci-Fi")
+        assertNotNull(sciFi)
+        assertFalse(libraryRepo.renameCategory(sciFi!!.id, "Fiction"))
+        assertTrue(libraryRepo.renameCategory(sciFi.id, "Speculative"))
+
+        libraryRepo.updateBookMetadata(
+            bookId = imported.id,
+            title = imported.title,
+            author = "Author",
+            description = "",
+            publisher = "",
+            language = "en",
+            categoryName = "Speculative",
+            tagNames = emptyList(),
+            collectionIds = emptyList()
+        )
+        assertEquals(sciFi.id, libraryRepo.getBookById(imported.id)?.categoryId)
+
+        libraryRepo.deleteCategory(sciFi.id)
+        val bookAfterDelete = libraryRepo.getBookById(imported.id)
+        assertNotNull(bookAfterDelete)
+        assertNull(bookAfterDelete!!.categoryId)
+    }
+
+    @Test
+    fun `cover replacement rejects invalid images cleanly and restore default clears cover without changing book id`() = runBlocking {
+        val txtFile = File(tempDir, "cover_book.txt").apply { writeText("Book body") }
+        val imported = (libraryRepo.importDocument(Uri.fromFile(txtFile), takePersistablePermission = false)
+            as com.example.data.repository.ImportOutcome.Imported).book
+
+        val badCover = File(tempDir, "not_an_image.txt").apply { writeText("corrupt image bytes") }
+        assertFalse(libraryRepo.setBookCover(imported.id, Uri.fromFile(badCover)))
+        assertEquals(imported.id, libraryRepo.getBookById(imported.id)?.id)
+
+        val validPngBytes = android.util.Base64.decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+            android.util.Base64.DEFAULT
+        )
+        val goodCover = File(tempDir, "cover.png").apply { writeBytes(validPngBytes) }
+
+        assertTrue(libraryRepo.setBookCover(imported.id, Uri.fromFile(goodCover)))
+        val withCover = libraryRepo.getBookById(imported.id)!!
+        assertEquals(imported.id, withCover.id)
+        assertNotNull(withCover.coverUri)
+        assertTrue(File(withCover.coverUri!!).exists())
+
+        libraryRepo.restoreDefaultCover(imported.id)
+        val restored = libraryRepo.getBookById(imported.id)!!
+        assertEquals(imported.id, restored.id)
+        assertNull(restored.coverUri)
+    }
+
+    @Test
+    fun `epub parser loads all chapters even when large images exceed image budget`() {
+        val epubFile = File(tempDir, "illustrated_large.epub")
+        ZipOutputStream(FileOutputStream(epubFile)).use { zos ->
+            zos.putNextEntry(ZipEntry("mimetype"))
+            zos.write("application/epub+zip".toByteArray())
+            zos.closeEntry()
+
+            zos.putNextEntry(ZipEntry("META-INF/container.xml"))
+            zos.write(
+                """<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>""".toByteArray()
+            )
+            zos.closeEntry()
+
+            // Several large uncompressed image entries totaling > 25MB (exceeding old 24MB shared cap)
+            zos.setLevel(0)
+            val chunk = ByteArray(9 * 1024 * 1024) { 0x42 }
+            for (i in 1..3) {
+                zos.putNextEntry(ZipEntry("OEBPS/images/big_$i.png"))
+                zos.write(chunk)
+                zos.closeEntry()
+            }
+            zos.setLevel(6)
+
+            zos.putNextEntry(ZipEntry("OEBPS/content.opf"))
+            zos.write(
+                """<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Big Atlas</dc:title></metadata><manifest><item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/><item id="ch2" href="ch2.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="ch1"/><itemref idref="ch2"/></spine></package>""".toByteArray()
+            )
+            zos.closeEntry()
+
+            zos.putNextEntry(ZipEntry("OEBPS/ch1.xhtml"))
+            zos.write("<html><body><h1>Chapter 1</h1><p>Start.</p></body></html>".toByteArray())
+            zos.closeEntry()
+
+            zos.putNextEntry(ZipEntry("OEBPS/ch2.xhtml"))
+            zos.write("<html><body><h1>Chapter 2</h1><p>Ending chapter preserved.</p></body></html>".toByteArray())
+            zos.closeEntry()
+        }
+
+        val parsed = EpubParser.parse(context.contentResolver, Uri.fromFile(epubFile))
+        assertTrue(parsed.isSuccess)
+        val epub = parsed.getOrThrow()
+        assertEquals(2, epub.chapters.size)
+        assertTrue(epub.chapters[1].paragraphs.any { it.toString().contains("Ending chapter preserved.") })
+    }
+
+    private suspend fun awaitMainCondition(timeoutMs: Long = 5000L, condition: suspend () -> Boolean) {
+        val mainShadow = org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!condition() && System.currentTimeMillis() < deadline) {
+            mainShadow.idle()
+            delay(25)
+        }
+        mainShadow.idle()
+    }
+
+    @Test
+    fun `external document opens without forced import and saves to library on request preserving position`() = runBlocking {
+        val extFile = File(tempDir, "external_book.epub")
+        ZipOutputStream(FileOutputStream(extFile)).use { zos ->
+            zos.putNextEntry(ZipEntry("mimetype"))
+            zos.write("application/epub+zip".toByteArray())
+            zos.closeEntry()
+            zos.putNextEntry(ZipEntry("META-INF/container.xml"))
+            zos.write(
+                """<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>""".toByteArray()
+            )
+            zos.closeEntry()
+            zos.putNextEntry(ZipEntry("OEBPS/content.opf"))
+            zos.write(
+                """<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>External Book</dc:title></metadata><manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>""".toByteArray()
+            )
+            zos.closeEntry()
+            zos.putNextEntry(ZipEntry("OEBPS/c1.xhtml"))
+            zos.write("<html><body><h1>Ch 1</h1><p>P1</p><p>P2</p></body></html>".toByteArray())
+            zos.closeEntry()
+            zos.putNextEntry(ZipEntry("OEBPS/c2.xhtml"))
+            zos.write("<html><body><h1>Ch 2</h1><p>PA</p><p>PB</p><p>PC</p></body></html>".toByteArray())
+            zos.closeEntry()
+        }
+        val soundManager = PageTurnSoundManager(context, prefsRepo)
+        val vm = ReaderViewModel(
+            appContext = context,
+            bookId = "",
+            externalUri = Uri.fromFile(extFile).toString(),
+            initialPageOverride = null,
+            initialChapterOverride = null,
+            libraryRepository = libraryRepo,
+            preferencesRepository = prefsRepo,
+            soundManager = soundManager
+        )
+
+        awaitMainCondition { vm.contentState.value !is ReaderContentState.Loading }
+        assertTrue(vm.contentState.value is ReaderContentState.EpubReady)
+        assertTrue(vm.isExternalUnsaved.value)
+        assertEquals(0, db.libraryDao().getAllBooksSnapshot().size)
+
+        vm.goToEpubChapter(1, playSound = false)
+        vm.updateReflowableScrollOffset(2)
+        vm.saveExternalBookToLibrary(
+            title = "Saved External Essay",
+            author = "Guest Writer",
+            categoryName = "Essays"
+        )
+
+        awaitMainCondition { !vm.isExternalUnsaved.value }
+        assertFalse(vm.isExternalUnsaved.value)
+        val books = db.libraryDao().getAllBooksSnapshot()
+        assertEquals(1, books.size)
+        assertEquals("Saved External Essay", books[0].title)
+        val progress = libraryRepo.getProgressForBook(books[0].id)
+        assertNotNull(progress)
+        assertEquals(1, progress!!.chapterIndex)
+        assertEquals(2, progress.scrollOffset)
+        soundManager.release()
+    }
+
+    @Test
+    fun `reflowable scroll offset flushes cleanly and restores on reopen`() = runBlocking {
+        val bookFile = File(tempDir, "long_text.txt").apply {
+            writeText((1..30).joinToString("\n\n") { "Paragraph number $it with readable words." })
+        }
+        val imported = (libraryRepo.importDocument(Uri.fromFile(bookFile), takePersistablePermission = false)
+            as com.example.data.repository.ImportOutcome.Imported).book
+        val soundManager = PageTurnSoundManager(context, prefsRepo)
+
+        val vm1 = ReaderViewModel(
+            appContext = context,
+            bookId = imported.id,
+            externalUri = null,
+            initialPageOverride = null,
+            initialChapterOverride = null,
+            libraryRepository = libraryRepo,
+            preferencesRepository = prefsRepo,
+            soundManager = soundManager
+        )
+        awaitMainCondition { vm1.contentState.value !is ReaderContentState.Loading }
+        assertTrue(vm1.contentState.value is ReaderContentState.TextDocumentReady)
+
+        vm1.updateReflowableScrollOffset(9)
+        vm1.flushCurrentPosition()
+        awaitMainCondition { libraryRepo.getProgressForBook(imported.id)?.scrollOffset == 9 }
+
+        val saved = libraryRepo.getProgressForBook(imported.id)
+        assertNotNull(saved)
+        assertEquals(9, saved!!.scrollOffset)
+
+        val vm2 = ReaderViewModel(
+            appContext = context,
+            bookId = imported.id,
+            externalUri = null,
+            initialPageOverride = null,
+            initialChapterOverride = null,
+            libraryRepository = libraryRepo,
+            preferencesRepository = prefsRepo,
+            soundManager = soundManager
+        )
+        awaitMainCondition { vm2.contentState.value !is ReaderContentState.Loading }
+        val reopened = vm2.contentState.value as ReaderContentState.TextDocumentReady
+        assertEquals(9, reopened.initialScrollOffset)
+        soundManager.release()
+    }
+
+    @Test
+    fun `pdf fit mode preference persists and resets cleanly`() = runBlocking {
+        assertEquals(PdfFitMode.FIT_PAGE, prefsRepo.preferencesFlow.first().readerPdfFitMode)
+        prefsRepo.setReaderPdfFitMode(PdfFitMode.FIT_WIDTH)
+        assertEquals(PdfFitMode.FIT_WIDTH, prefsRepo.preferencesFlow.first().readerPdfFitMode)
+        prefsRepo.resetReadingPreferences()
+        assertEquals(PdfFitMode.FIT_PAGE, prefsRepo.preferencesFlow.first().readerPdfFitMode)
     }
 }

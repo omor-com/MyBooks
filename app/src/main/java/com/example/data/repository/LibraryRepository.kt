@@ -2,6 +2,8 @@ package com.example.data.repository
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.example.data.local.dao.AnnotationDao
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import kotlin.math.max
 
 sealed interface ImportOutcome {
     data class Imported(val book: BookEntity) : ImportOutcome
@@ -258,18 +261,165 @@ class LibraryRepository(
         libraryDao.replaceBookTagsAndCollections(bookId, tagIds, collectionIds)
     }
 
-    suspend fun setBookCover(bookId: String, imageUri: Uri) = withContext(Dispatchers.IO) {
-        val existing = libraryDao.getBookById(bookId) ?: return@withContext
+    suspend fun setBookCover(bookId: String, imageUri: Uri): Boolean = withContext(Dispatchers.IO) {
+        val existing = libraryDao.getBookById(bookId) ?: return@withContext false
+        val decoded = decodeDownsampledBitmap(imageUri, maxDimPx = 1000) ?: return@withContext false
         val coversDir = File(context.filesDir, "covers").apply { mkdirs() }
         val destFile = File(coversDir, "$bookId.jpg")
-        context.contentResolver.openInputStream(imageUri)?.use { input ->
-            destFile.outputStream().use { output ->
-                input.copyTo(output)
+        try {
+            destFile.outputStream().use { out ->
+                decoded.compress(Bitmap.CompressFormat.JPEG, 88, out)
             }
+        } finally {
+            decoded.recycle()
         }
         libraryDao.updateBook(
             existing.copy(coverUri = destFile.absolutePath, updatedAtEpochMs = System.currentTimeMillis())
         )
+        true
+    }
+
+    suspend fun restoreDefaultCover(bookId: String) = withContext(Dispatchers.IO) {
+        val existing = libraryDao.getBookById(bookId) ?: return@withContext
+        val oldPath = existing.coverUri
+        if (!oldPath.isNullOrBlank()) {
+            val f = File(oldPath)
+            val coversDir = File(context.filesDir, "covers")
+            if (f.parentFile?.absolutePath == coversDir.absolutePath && f.exists()) {
+                f.delete()
+            }
+        }
+        libraryDao.clearBookCover(bookId)
+    }
+
+    suspend fun createCategory(name: String): CategoryEntity? = withContext(Dispatchers.IO) {
+        val clean = name.trim()
+        if (clean.isEmpty()) return@withContext null
+        val existing = libraryDao.findCategoryByName(clean)
+        if (existing != null) return@withContext existing
+        val created = CategoryEntity(id = UUID.randomUUID().toString(), name = clean)
+        libraryDao.insertCategory(created)
+        created
+    }
+
+    suspend fun renameCategory(categoryId: String, newName: String): Boolean = withContext(Dispatchers.IO) {
+        val clean = newName.trim()
+        if (clean.isEmpty()) return@withContext false
+        val conflict = libraryDao.findCategoryByName(clean)
+        if (conflict != null && conflict.id != categoryId) return@withContext false
+        libraryDao.renameCategory(categoryId, clean)
+        true
+    }
+
+    suspend fun deleteCategory(categoryId: String) = withContext(Dispatchers.IO) {
+        libraryDao.deleteCategoryById(categoryId)
+    }
+
+    suspend fun importExternalWithMetadata(
+        uri: Uri,
+        title: String,
+        author: String,
+        categoryName: String?,
+        currentPage: Int,
+        totalPages: Int,
+        currentChapter: Int,
+        totalChapters: Int,
+        scrollOffset: Int
+    ): Result<BookEntity> = withContext(Dispatchers.IO) {
+        when (val outcome = importDocument(uri, takePersistablePermission = true)) {
+            is ImportOutcome.Failed -> Result.failure(IllegalStateException(outcome.reason))
+            is ImportOutcome.DuplicateFound -> {
+                val target = outcome.existingBook
+                if (title.isNotBlank() || author.isNotBlank() || !categoryName.isNullOrBlank()) {
+                    val catId = if (!categoryName.isNullOrBlank()) createCategory(categoryName)?.id else target.categoryId
+                    libraryDao.updateBook(
+                        target.copy(
+                            title = title.trim().ifBlank { target.title },
+                            author = author.trim().ifBlank { target.author },
+                            categoryId = catId,
+                            updatedAtEpochMs = System.currentTimeMillis()
+                        )
+                    )
+                }
+                val fraction = computeFraction(currentPage, totalPages, currentChapter, totalChapters)
+                saveReadingProgress(
+                    bookId = target.id,
+                    progressFraction = fraction,
+                    pageIndex = currentPage,
+                    totalPages = totalPages,
+                    chapterIndex = currentChapter,
+                    totalChapters = totalChapters,
+                    scrollOffset = scrollOffset,
+                    locatorJson = """{"page":$currentPage,"chapter":$currentChapter,"scroll":$scrollOffset}"""
+                )
+                Result.success(libraryDao.getBookById(target.id) ?: target)
+            }
+            is ImportOutcome.Imported -> {
+                val imported = outcome.book
+                val catId = if (!categoryName.isNullOrBlank()) createCategory(categoryName)?.id else null
+                val updated = imported.copy(
+                    title = title.trim().ifBlank { imported.title },
+                    author = author.trim().ifBlank { imported.author },
+                    categoryId = catId,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+                libraryDao.updateBook(updated)
+                val fraction = computeFraction(currentPage, totalPages, currentChapter, totalChapters)
+                saveReadingProgress(
+                    bookId = updated.id,
+                    progressFraction = fraction,
+                    pageIndex = currentPage,
+                    totalPages = totalPages,
+                    chapterIndex = currentChapter,
+                    totalChapters = totalChapters,
+                    scrollOffset = scrollOffset,
+                    locatorJson = """{"page":$currentPage,"chapter":$currentChapter,"scroll":$scrollOffset}"""
+                )
+                Result.success(libraryDao.getBookById(updated.id) ?: updated)
+            }
+        }
+    }
+
+    private fun computeFraction(page: Int, totalPages: Int, chapter: Int, totalChapters: Int): Float {
+        return if (totalPages > 1) {
+            (page + 1).toFloat() / totalPages.toFloat()
+        } else {
+            (chapter + 1).toFloat() / totalChapters.coerceAtLeast(1).toFloat()
+        }.coerceIn(0f, 1f)
+    }
+
+    private fun decodeDownsampledBitmap(uri: Uri, maxDimPx: Int): Bitmap? {
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, bounds)
+            }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outMimeType.isNullOrBlank()) return null
+            var sampleSize = 1
+            while (max(bounds.outWidth / sampleSize, bounds.outHeight / sampleSize) > maxDimPx * 2) {
+                sampleSize *= 2
+            }
+            val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            val raw = context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, decodeOpts)
+            } ?: return null
+            val maxSide = max(raw.width, raw.height)
+            if (maxSide <= maxDimPx) {
+                raw
+            } else {
+                val scale = maxDimPx.toFloat() / maxSide.toFloat()
+                val scaled = Bitmap.createScaledBitmap(
+                    raw,
+                    (raw.width * scale).toInt().coerceAtLeast(1),
+                    (raw.height * scale).toInt().coerceAtLeast(1),
+                    true
+                )
+                if (scaled !== raw) raw.recycle()
+                scaled
+            }
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     suspend fun createCollection(name: String, description: String = ""): CollectionEntity =
@@ -448,7 +598,7 @@ class LibraryRepository(
         }
     }
 
-    private fun resolveDisplayName(uri: Uri): String {
+    fun resolveDisplayName(uri: Uri): String {
         if (uri.scheme == "content") {
             try {
                 context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->

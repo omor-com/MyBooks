@@ -3,7 +3,9 @@ package com.example.data.audio
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
 import android.media.SoundPool
+import android.os.Build
 import android.os.SystemClock
 import com.example.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +35,8 @@ class PageTurnSoundManager(
     private val context: Context,
     private val preferencesRepository: UserPreferencesRepository,
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
+        .followRedirects(true)
+        .followSslRedirects(true)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
@@ -43,7 +47,7 @@ class PageTurnSoundManager(
         private const val AUDIO_DIR = "audio"
         private const val SOUND_FILENAME = "bookreader-page-flip.mp3"
         private const val MIN_VALID_BYTES = 1024L
-        private const val PLAY_DEBOUNCE_MS = 260L
+        private const val PLAY_DEBOUNCE_MS = 240L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -52,14 +56,25 @@ class PageTurnSoundManager(
 
     private var soundPool: SoundPool? = null
     private var loadedSoundId: Int = 0
+    @Volatile
     private var isSoundLoaded = false
+    @Volatile
+    private var pendingPlayOnLoad = false
+    @Volatile
     private var lastPlayUptimeMs = 0L
     private var downloadJob: Job? = null
+    private var activeFallbackPlayer: MediaPlayer? = null
 
     fun soundFile(): File {
         val dir = File(context.filesDir, AUDIO_DIR)
         if (!dir.exists()) dir.mkdirs()
         return File(dir, SOUND_FILENAME)
+    }
+
+    fun preloadIfReadyAsync() {
+        scope.launch {
+            verifyLocalSoundIntegrity()
+        }
     }
 
     suspend fun verifyLocalSoundIntegrity(): Boolean = withContext(Dispatchers.IO) {
@@ -89,7 +104,6 @@ class PageTurnSoundManager(
     fun startDownload() {
         if (downloadJob?.isActive == true) return
         downloadJob = scope.launch {
-            // Avoid redundant download if already valid locally
             val target = soundFile()
             if (isValidMp3File(target)) {
                 preferencesRepository.setPageTurnSoundDownloaded(true)
@@ -101,7 +115,11 @@ class PageTurnSoundManager(
             _downloadState.value = SoundDownloadState.Downloading(0)
             val tmpFile = File(target.parentFile, "$SOUND_FILENAME.tmp")
             try {
-                val request = Request.Builder().url(OFFICIAL_SOUND_URL).get().build()
+                val request = Request.Builder()
+                    .url(OFFICIAL_SOUND_URL)
+                    .header("Accept", "audio/mpeg, audio/*, */*")
+                    .get()
+                    .build()
                 httpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         throw IllegalStateException("HTTP ${response.code}")
@@ -122,6 +140,7 @@ class PageTurnSoundManager(
                                     _downloadState.value = SoundDownloadState.Downloading(pct)
                                 }
                             }
+                            output.fd.sync()
                         }
                     }
                 }
@@ -137,6 +156,9 @@ class PageTurnSoundManager(
                     tmpFile.delete()
                 }
 
+                // Force clean reload into SoundPool
+                loadedSoundId = 0
+                isSoundLoaded = false
                 preferencesRepository.setPageTurnSoundDownloaded(true)
                 preferencesRepository.setPageTurnSoundEnabled(true)
                 preloadSoundPool(target)
@@ -162,13 +184,22 @@ class PageTurnSoundManager(
             return
         }
 
-        if (soundPool == null) {
+        if (soundPool == null || loadedSoundId == 0) {
+            pendingPlayOnLoad = true
+            lastPlayUptimeMs = now
             preloadSoundPool(file)
+            return
         }
+
         val pool = soundPool ?: return
         if (isSoundLoaded && loadedSoundId != 0) {
             lastPlayUptimeMs = now
-            pool.play(loadedSoundId, 0.55f, 0.55f, 1, 0, 1.0f)
+            val streamId = pool.play(loadedSoundId, 1.0f, 1.0f, 1, 0, 1.0f)
+            if (streamId == 0) {
+                playWithMediaPlayerFallback(file)
+            }
+        } else {
+            pendingPlayOnLoad = true
         }
     }
 
@@ -176,16 +207,27 @@ class PageTurnSoundManager(
         try {
             if (soundPool == null) {
                 val attrs = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
                 soundPool = SoundPool.Builder()
-                    .setMaxStreams(1)
+                    .setMaxStreams(2)
                     .setAudioAttributes(attrs)
                     .build().apply {
-                        setOnLoadCompleteListener { _, sampleId, status ->
+                        setOnLoadCompleteListener { pool, sampleId, status ->
                             if (status == 0 && sampleId == loadedSoundId) {
                                 isSoundLoaded = true
+                                if (pendingPlayOnLoad) {
+                                    pendingPlayOnLoad = false
+                                    lastPlayUptimeMs = SystemClock.uptimeMillis()
+                                    val streamId = pool.play(sampleId, 1.0f, 1.0f, 1, 0, 1.0f)
+                                    if (streamId == 0) {
+                                        playWithMediaPlayerFallback(file)
+                                    }
+                                }
+                            } else if (status != 0 && pendingPlayOnLoad) {
+                                pendingPlayOnLoad = false
+                                playWithMediaPlayerFallback(file)
                             }
                         }
                     }
@@ -195,28 +237,84 @@ class PageTurnSoundManager(
                 loadedSoundId = soundPool?.load(file.absolutePath, 1) ?: 0
             }
         } catch (_: Exception) {
+            if (pendingPlayOnLoad) {
+                pendingPlayOnLoad = false
+                playWithMediaPlayerFallback(file)
+            }
+        }
+    }
+
+    private fun playWithMediaPlayerFallback(file: File) {
+        if (!file.exists()) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                activeFallbackPlayer?.let {
+                    runCatching {
+                        if (it.isPlaying) it.stop()
+                        it.release()
+                    }
+                }
+                val attrs = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                val mp = MediaPlayer().apply {
+                    setAudioAttributes(attrs)
+                    setVolume(1.0f, 1.0f)
+                    setDataSource(file.absolutePath)
+                    setOnCompletionListener { player ->
+                        runCatching { player.release() }
+                        if (activeFallbackPlayer === player) {
+                            activeFallbackPlayer = null
+                        }
+                    }
+                    setOnErrorListener { player, _, _ ->
+                        runCatching { player.release() }
+                        if (activeFallbackPlayer === player) {
+                            activeFallbackPlayer = null
+                        }
+                        true
+                    }
+                    prepare()
+                    start()
+                }
+                activeFallbackPlayer = mp
+            } catch (_: Exception) {
+            }
         }
     }
 
     fun isValidMp3File(file: File): Boolean {
         if (!file.exists() || !file.isFile || file.length() < MIN_VALID_BYTES) return false
         return try {
-            val header = ByteArray(16)
-            file.inputStream().use { it.read(header) }
+            val probeSize = minOf(file.length(), 4096L).toInt()
+            val header = ByteArray(probeSize)
+            val bytesRead = file.inputStream().use { it.read(header) }
+            if (bytesRead < 4) return false
+
             val hasId3 = header[0] == 'I'.code.toByte() &&
                 header[1] == 'D'.code.toByte() &&
                 header[2] == '3'.code.toByte()
-            val hasMp3Sync = (header[0].toInt() and 0xFF) == 0xFF &&
-                ((header[1].toInt() and 0xE0) == 0xE0)
+
+            var hasMp3Sync = false
+            if (!hasId3) {
+                for (i in 0 until bytesRead - 1) {
+                    val b0 = header[i].toInt() and 0xFF
+                    val b1 = header[i + 1].toInt() and 0xFF
+                    if (b0 == 0xFF && (b1 and 0xE0) == 0xE0 && (b1 and 0x06) != 0) {
+                        hasMp3Sync = true
+                        break
+                    }
+                }
+            }
             if (!hasId3 && !hasMp3Sync) return false
 
-            // Also verify via MediaMetadataRetriever when running on Android runtime
             try {
                 val mmr = MediaMetadataRetriever()
                 mmr.setDataSource(file.absolutePath)
                 val durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 mmr.release()
-                if (durationStr == null && android.os.Build.FINGERPRINT.equals("robolectric", ignoreCase = true)) {
+                if (durationStr == null && Build.FINGERPRINT.equals("robolectric", ignoreCase = true)) {
                     true
                 } else {
                     (durationStr?.toLongOrNull() ?: 0L) > 0L
@@ -224,7 +322,7 @@ class PageTurnSoundManager(
             } catch (_: UnsatisfiedLinkError) {
                 true
             } catch (_: RuntimeException) {
-                android.os.Build.FINGERPRINT.equals("robolectric", ignoreCase = true)
+                Build.FINGERPRINT.equals("robolectric", ignoreCase = true)
             }
         } catch (_: Exception) {
             false
@@ -232,9 +330,17 @@ class PageTurnSoundManager(
     }
 
     fun release() {
+        pendingPlayOnLoad = false
         soundPool?.release()
         soundPool = null
         loadedSoundId = 0
         isSoundLoaded = false
+        activeFallbackPlayer?.let {
+            runCatching {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+        }
+        activeFallbackPlayer = null
     }
 }

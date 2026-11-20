@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -314,7 +314,7 @@ fun AdminModerationModal(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(list, key = { it.id }) { report ->
+                        itemsIndexed(list, key = { index, report -> report.id.ifBlank { "report_$index" } }) { _, report ->
                             Card(shape = RoundedCornerShape(14.dp)) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
@@ -369,7 +369,7 @@ fun AdminModerationModal(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(users, key = { it.uid }) { member ->
+                        itemsIndexed(users, key = { index, member -> member.uid.ifBlank { member.id.ifBlank { "user_$index" } } }) { _, member ->
                             Card(shape = RoundedCornerShape(14.dp)) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
@@ -426,7 +426,7 @@ fun AdminModerationModal(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(logs, key = { it.id }) { log ->
+                        itemsIndexed(logs, key = { index, log -> log.id.ifBlank { "log_$index" } }) { _, log ->
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),

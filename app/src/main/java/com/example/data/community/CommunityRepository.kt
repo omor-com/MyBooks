@@ -11,6 +11,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -73,8 +74,7 @@ class CommunityRepository(
             val ref = db.collection(COL_USERS).document(user.uid)
             val snap = ref.get().await()
             if (snap.exists()) {
-                val existing = snap.toObject(CommunityUser::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
-                    ?: CommunityUser(uid = user.uid)
+                val existing = snap.safeToUser() ?: CommunityUser(id = user.uid, uid = user.uid)
                 return Result.success(existing)
             }
 
@@ -100,8 +100,7 @@ class CommunityRepository(
                 "updatedAt" to FieldValue.serverTimestamp()
             )
             ref.set(payload).await()
-            val created = ref.get().await()
-                .toObject(CommunityUser::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+            val created = ref.get().await().safeToUser()
                 ?: CommunityUser(
                     id = user.uid,
                     uid = user.uid,
@@ -125,7 +124,7 @@ class CommunityRepository(
             db.collection(COL_USERS).document(userId)
                 .snapshots()
                 .map { snap ->
-                    snap.toObject(CommunityUser::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    snap.safeToUser()
                 }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
@@ -146,7 +145,7 @@ class CommunityRepository(
         return try {
             requireUser()
             val snap = db.collection(COL_USERS).document(userId).get().await()
-            Result.success(snap.toObject(CommunityUser::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE))
+            Result.success(snap.safeToUser())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -181,25 +180,50 @@ class CommunityRepository(
 
     fun observeVisibleFeed(limitCount: Long = 25L): Flow<List<CommunityPost>> = flow {
         val uid = requireUser().uid
+        val primaryQuery = db.collection(COL_POSTS)
+            .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(limitCount)
+
         emitAll(
-            db.collection(COL_POSTS)
-                .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(limitCount)
-                .snapshots()
-                .map { snapshot ->
-                    snapshot.toObjects(CommunityPost::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
-                }
+            primaryQuery.snapshots()
+                .map { snapshot -> snapshot.safeToPosts() }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
                         .filterIsInstance<FirebaseFirestoreException>()
                         .firstOrNull()
                     if (fsError == null && error is CancellationException) throw error
-                    val toLog = fsError ?: (error as? Exception)
-                    if (toLog != null && auth.currentUser?.uid == uid) {
-                        handleFirestoreError(toLog, OperationType.LIST, COL_POSTS)
+                    if (fsError?.code == FirebaseFirestoreException.Code.FAILED_PRECONDITION) {
+                        // Fallback query avoids composite index crash while remaining compliant with firestore.rules
+                        val fallbackQuery = db.collection(COL_POSTS)
+                            .whereEqualTo("visibility", PostVisibility.VISIBLE.firestoreValue)
+                            .limit((limitCount * 2L).coerceAtMost(100L))
+                        emitAll(
+                            fallbackQuery.snapshots()
+                                .map { snap ->
+                                    snap.safeToPosts()
+                                        .sortedByDescending { it.createdAt?.seconds ?: 0L }
+                                        .take(limitCount.toInt())
+                                }
+                                .catch { fallbackErr ->
+                                    val fbFsErr = generateSequence(fallbackErr) { it.cause }
+                                        .filterIsInstance<FirebaseFirestoreException>()
+                                        .firstOrNull()
+                                    if (fbFsErr == null && fallbackErr is CancellationException) throw fallbackErr
+                                    val toLog = fbFsErr ?: (fallbackErr as? Exception)
+                                    if (toLog != null && auth.currentUser?.uid == uid) {
+                                        handleFirestoreError(toLog, OperationType.LIST, COL_POSTS)
+                                    }
+                                    throw fallbackErr
+                                }
+                        )
+                    } else {
+                        val toLog = fsError ?: (error as? Exception)
+                        if (toLog != null && auth.currentUser?.uid == uid) {
+                            handleFirestoreError(toLog, OperationType.LIST, COL_POSTS)
+                        }
+                        throw error
                     }
-                    throw error
                 }
         )
     }
@@ -310,7 +334,7 @@ class CommunityRepository(
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(50)
                 .snapshots()
-                .map { it.toObjects(CommunityReport::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE) }
+                .map { it.safeToReports() }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
                         .filterIsInstance<FirebaseFirestoreException>()
@@ -331,7 +355,7 @@ class CommunityRepository(
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(100)
                 .snapshots()
-                .map { it.toObjects(CommunityUser::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE) }
+                .map { it.safeToUsers() }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
                         .filterIsInstance<FirebaseFirestoreException>()
@@ -352,7 +376,7 @@ class CommunityRepository(
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(50)
                 .snapshots()
-                .map { it.toObjects(ModerationAuditLog::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE) }
+                .map { it.safeToAuditLogs() }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
                         .filterIsInstance<FirebaseFirestoreException>()
@@ -480,7 +504,7 @@ class CommunityRepository(
         return try {
             requireUser()
             val snap = db.collection(COL_POSTS).document(postId).get().await()
-            Result.success(snap.toObject(CommunityPost::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE))
+            Result.success(snap.safeToPost())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -507,4 +531,73 @@ class CommunityRepository(
         if (note.isNotBlank()) payload["note"] = note.take(300)
         db.collection(COL_AUDIT_LOGS).document(logId).set(payload).await()
     }
+
+    private fun DocumentSnapshot.safeToUser(): CommunityUser? {
+        if (!exists()) return null
+        return try {
+            toObject(CommunityUser::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                ?.let { user ->
+                    val resolvedUid = user.uid.ifBlank { id }
+                    user.copy(
+                        id = user.id.ifBlank { resolvedUid },
+                        uid = resolvedUid,
+                        displayName = user.displayName.ifBlank { "MyBooks Reader" },
+                        photoUrl = user.photoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL }
+                    )
+                }
+        } catch (_: Exception) {
+            CommunityUser(
+                id = id,
+                uid = getString("uid")?.takeIf { it.isNotBlank() } ?: id,
+                displayName = getString("displayName")?.takeIf { it.isNotBlank() } ?: "MyBooks Reader",
+                photoUrl = getString("photoUrl")?.takeIf { it.isNotBlank() } ?: CommunityConstants.DEFAULT_USER_AVATAR_URL,
+                bio = getString("bio").orEmpty(),
+                badgeType = getString("badgeType") ?: BadgeType.NONE.firestoreValue,
+                restricted = (get("restricted") as? Boolean) ?: false,
+                restrictionReason = getString("restrictionReason").orEmpty()
+            )
+        }
+    }
+
+    private fun DocumentSnapshot.safeToPost(): CommunityPost? {
+        if (!exists()) return null
+        return try {
+            toObject(CommunityPost::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                ?.let { post ->
+                    post.copy(
+                        id = post.id.ifBlank { id },
+                        authorName = post.authorName.ifBlank { "MyBooks Reader" },
+                        authorPhotoUrl = post.authorPhotoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL }
+                    )
+                }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun QuerySnapshot.safeToPosts(): List<CommunityPost> =
+        documents.mapNotNull { it.safeToPost() }
+
+    private fun QuerySnapshot.safeToUsers(): List<CommunityUser> =
+        documents.mapNotNull { it.safeToUser() }
+
+    private fun QuerySnapshot.safeToReports(): List<CommunityReport> =
+        documents.mapNotNull { doc ->
+            try {
+                doc.toObject(CommunityReport::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    ?.let { report -> report.copy(id = report.id.ifBlank { doc.id }) }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    private fun QuerySnapshot.safeToAuditLogs(): List<ModerationAuditLog> =
+        documents.mapNotNull { doc ->
+            try {
+                doc.toObject(ModerationAuditLog::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    ?.let { log -> log.copy(id = log.id.ifBlank { doc.id }) }
+            } catch (_: Exception) {
+                null
+            }
+        }
 }

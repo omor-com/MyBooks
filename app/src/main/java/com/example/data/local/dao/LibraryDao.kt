@@ -95,6 +95,9 @@ interface LibraryDao {
         now: Long = System.currentTimeMillis()
     )
 
+    @Query("UPDATE books SET coverUri = NULL, updatedAtEpochMs = :now WHERE id = :bookId")
+    suspend fun clearBookCover(bookId: String, now: Long = System.currentTimeMillis())
+
     @Query("UPDATE books SET readingProgress = :progress, lastOpenedEpochMs = :openedAt, updatedAtEpochMs = :openedAt WHERE id = :bookId")
     suspend fun updateBookProgressSummary(bookId: String, progress: Float, openedAt: Long)
 
@@ -107,8 +110,17 @@ interface LibraryDao {
         updateBookProgressSummary(progress.bookId, progress.progressFraction, openedAt)
     }
 
+    @Query("SELECT * FROM categories WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun findCategoryByName(name: String): CategoryEntity?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCategory(category: CategoryEntity)
+
+    @Query("UPDATE categories SET name = :newName WHERE id = :categoryId")
+    suspend fun renameCategory(categoryId: String, newName: String)
+
+    @Query("DELETE FROM categories WHERE id = :categoryId")
+    suspend fun deleteCategoryById(categoryId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCategories(categories: List<CategoryEntity>)

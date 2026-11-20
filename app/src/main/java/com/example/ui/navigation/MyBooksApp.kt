@@ -60,6 +60,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.AppContainer
+import com.example.IncomingIntentRequest
 import com.example.R
 import com.example.data.reader.DocumentFormat
 import com.example.ui.screens.bookmarks.BookmarksNotesScreen
@@ -98,6 +99,7 @@ data object BackupRestoreRoute
 @Serializable
 data class ReaderRoute(
     val bookId: String,
+    val externalUri: String? = null,
     val pageIndex: Int? = null,
     val chapterIndex: Int? = null
 )
@@ -121,8 +123,8 @@ private val TopDestinations = listOf(
 @Composable
 fun MyBooksApp(
     container: AppContainer,
-    incomingUris: List<Uri>,
-    onConsumeIncomingUris: () -> Unit
+    incomingRequest: IncomingIntentRequest?,
+    onConsumeIncomingRequest: () -> Unit
 ) {
     val libraryViewModel: LibraryViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -188,11 +190,21 @@ fun MyBooksApp(
                 }
             }
 
-            LaunchedEffect(incomingUris) {
-                if (incomingUris.isNotEmpty()) {
-                    libraryViewModel.importDocuments(incomingUris, openFirstOnSingleImport = true)
-                    onConsumeIncomingUris()
+            LaunchedEffect(incomingRequest) {
+                val req = incomingRequest ?: return@LaunchedEffect
+                if (req.openExternallyWithoutImport && req.uris.size == 1) {
+                    navController.navigate(
+                        ReaderRoute(
+                            bookId = "",
+                            externalUri = req.uris.first().toString()
+                        )
+                    ) {
+                        launchSingleTop = true
+                    }
+                } else if (req.uris.isNotEmpty()) {
+                    libraryViewModel.importDocuments(req.uris, openFirstOnSingleImport = true)
                 }
+                onConsumeIncomingRequest()
             }
 
             LaunchedEffect(Unit) {
@@ -209,13 +221,14 @@ fun MyBooksApp(
             val showTopChrome = TopDestinations.any { dest ->
                 currentDestination?.hierarchy?.any { it.hasRoute(dest.routeClass) } == true
             }
+            val isInReader = currentDestination?.hierarchy?.any { it.hasRoute(ReaderRoute::class) } == true
 
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val useNavRail = maxWidth >= 600.dp
 
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbarHostState) },
-                    contentWindowInsets = WindowInsets.safeDrawing,
+                    contentWindowInsets = if (isInReader) WindowInsets(0, 0, 0, 0) else WindowInsets.safeDrawing,
                     bottomBar = {
                         if (showTopChrome && !useNavRail) {
                             NavigationBar(modifier = Modifier.testTag("bottom_navigation_bar")) {
@@ -333,6 +346,10 @@ fun MyBooksApp(
                                         onRelocateFile = libraryViewModel::relocateBookFile,
                                         onUpdateMetadata = libraryViewModel::updateBookMetadata,
                                         onSetBookCover = libraryViewModel::setBookCover,
+                                        onRestoreDefaultCover = libraryViewModel::restoreDefaultCover,
+                                        onCreateCategory = libraryViewModel::createCategory,
+                                        onRenameCategory = libraryViewModel::renameCategory,
+                                        onDeleteCategory = libraryViewModel::deleteCategory,
                                         onCreateCollection = libraryViewModel::createCollection,
                                         onDeleteBook = libraryViewModel::removeBook,
                                         onDuplicateSkip = libraryViewModel::resolveDuplicateSkip,
@@ -363,6 +380,7 @@ fun MyBooksApp(
                                 composable<CommunityRoute> {
                                     CommunityRouteScreen(
                                         repository = container.communityRepository,
+                                        firebaseAuth = container.firebaseAuth,
                                         isBangla = prefs.appLanguage == "bn"
                                     )
                                 }
@@ -387,13 +405,14 @@ fun MyBooksApp(
                                 composable<ReaderRoute> { backStackEntry ->
                                     val route = backStackEntry.toRoute<ReaderRoute>()
                                     val readerVm: ReaderViewModel = viewModel(
-                                        key = "${route.bookId}_${route.pageIndex}_${route.chapterIndex}",
+                                        key = "${route.bookId}_${route.externalUri}_${route.pageIndex}_${route.chapterIndex}",
                                         factory = object : ViewModelProvider.Factory {
                                             @Suppress("UNCHECKED_CAST")
                                             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                                                 return ReaderViewModel(
                                                     appContext = baseContext.applicationContext,
                                                     bookId = route.bookId,
+                                                    externalUri = route.externalUri,
                                                     initialPageOverride = route.pageIndex,
                                                     initialChapterOverride = route.chapterIndex,
                                                     libraryRepository = container.libraryRepository,

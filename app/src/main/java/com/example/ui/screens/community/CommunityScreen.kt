@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Login
@@ -91,34 +91,40 @@ import com.example.ui.components.VerifiedBadgeIcon
 import com.example.ui.viewmodel.CommunityEvent
 import com.example.ui.viewmodel.CommunityViewModel
 import com.example.ui.viewmodel.UiState
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.auth
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 
 @Composable
 fun CommunityRouteScreen(
-    repository: CommunityRepository,
+    repository: CommunityRepository?,
+    firebaseAuth: FirebaseAuth?,
     isBangla: Boolean,
     modifier: Modifier = Modifier
 ) {
+    if (repository == null || firebaseAuth == null) {
+        CommunityUnavailableView(modifier = modifier)
+        return
+    }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val credentialManager = remember(context) {
+        runCatching { CredentialManager.create(context) }.getOrNull()
+    }
 
-    var currentUser by remember { mutableStateOf(Firebase.auth.currentUser) }
+    var currentUser by remember(firebaseAuth) { mutableStateOf(firebaseAuth.currentUser) }
     var isOnline by remember { mutableStateOf(checkNetworkAvailable(context)) }
     var authError by remember { mutableStateOf<String?>(null) }
     var isSigningIn by remember { mutableStateOf(false) }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(firebaseAuth) {
         val listener = FirebaseAuth.AuthStateListener { auth ->
             currentUser = auth.currentUser
         }
-        Firebase.auth.addAuthStateListener(listener)
-        onDispose { Firebase.auth.removeAuthStateListener(listener) }
+        firebaseAuth.addAuthStateListener(listener)
+        onDispose { firebaseAuth.removeAuthStateListener(listener) }
     }
 
     DisposableEffect(context) {
@@ -132,21 +138,28 @@ fun CommunityRouteScreen(
                 isOnline = checkNetworkAvailable(context)
             }
         }
-        cm?.registerDefaultNetworkCallback(callback)
+        try {
+            cm?.registerDefaultNetworkCallback(callback)
+        } catch (_: SecurityException) {
+            isOnline = checkNetworkAvailable(context)
+        } catch (_: Throwable) {
+            isOnline = checkNetworkAvailable(context)
+        }
         onDispose {
             try {
                 cm?.unregisterNetworkCallback(callback)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
             }
         }
     }
 
-    LaunchedEffect(isOnline) {
-        if (isOnline && Firebase.auth.currentUser == null) {
+    LaunchedEffect(isOnline, firebaseAuth) {
+        if (isOnline && firebaseAuth.currentUser == null) {
             GoogleAuthHelper.attemptAutoSignIn(
                 context = context,
                 credentialManager = credentialManager,
-                onAuthSuccess = { currentUser = Firebase.auth.currentUser },
+                auth = firebaseAuth,
+                onAuthSuccess = { currentUser = firebaseAuth.currentUser },
                 onUnauthenticated = {},
                 scope = scope
             )
@@ -167,9 +180,10 @@ fun CommunityRouteScreen(
                 GoogleAuthHelper.onGoogleSignInClicked(
                     context = context,
                     credentialManager = credentialManager,
+                    auth = firebaseAuth,
                     onAuthSuccess = {
                         isSigningIn = false
-                        currentUser = Firebase.auth.currentUser
+                        currentUser = firebaseAuth.currentUser
                     },
                     onAuthError = { err ->
                         isSigningIn = false
@@ -200,7 +214,7 @@ fun CommunityRouteScreen(
                 isOnline = isOnline,
                 isBangla = isBangla,
                 onSignOut = {
-                    GoogleAuthHelper.signOut(credentialManager, scope) {
+                    GoogleAuthHelper.signOut(credentialManager, firebaseAuth, scope) {
                         currentUser = null
                     }
                 },
@@ -211,10 +225,52 @@ fun CommunityRouteScreen(
 }
 
 private fun checkNetworkAvailable(context: Context): Boolean {
-    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-    val network = cm.activeNetwork ?: return false
-    val caps = cm.getNetworkCapabilities(network) ?: return false
-    return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    return try {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    } catch (_: SecurityException) {
+        true
+    } catch (_: Throwable) {
+        false
+    }
+}
+
+@Composable
+private fun CommunityUnavailableView(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .testTag("community_unavailable_view"),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(shape = RoundedCornerShape(24.dp)) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CloudOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
+                )
+                Text(
+                    text = stringResource(R.string.community_unavailable_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = stringResource(R.string.community_unavailable_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -497,7 +553,10 @@ private fun AuthenticatedCommunityFeed(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(st.data, key = { it.id }) { post ->
+                            itemsIndexed(
+                                items = st.data,
+                                key = { index, post -> post.id.ifBlank { "post_$index" } }
+                            ) { _, post ->
                                 CommunityPostCard(
                                     post = post,
                                     isOwnPost = post.authorUid == firebaseUser.uid,

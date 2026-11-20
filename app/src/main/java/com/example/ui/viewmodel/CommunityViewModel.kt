@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -45,6 +46,7 @@ class CommunityViewModel(
 ) : ViewModel() {
 
     private val _pageLimit = MutableStateFlow(25L)
+    private val _retryTrigger = MutableStateFlow(0)
     private val _isTrustedAdmin = MutableStateFlow(false)
     val isTrustedAdmin: StateFlow<Boolean> = _isTrustedAdmin.asStateFlow()
 
@@ -65,7 +67,9 @@ class CommunityViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), null)
 
-    val feedState: StateFlow<UiState<List<CommunityPost>>> = _pageLimit
+    val feedState: StateFlow<UiState<List<CommunityPost>>> = combine(_pageLimit, _retryTrigger) { limit, _ ->
+        limit
+    }
         .flatMapLatest { limit ->
             repository.observeVisibleFeed(limit)
                 .map<List<CommunityPost>, UiState<List<CommunityPost>>> { UiState.Success(it) }
@@ -76,7 +80,7 @@ class CommunityViewModel(
                     if (fsError == null && error is CancellationException) throw error
                     val root = fsError ?: error
                     Log.w(TAG, "Error observing feed", root)
-                    emit(UiState.Error(root.message ?: "Failed to load community feed"))
+                    emit(UiState.Error(root.localizedMessage ?: root.message ?: "Failed to load community feed"))
                 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
@@ -127,20 +131,26 @@ class CommunityViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
 
     init {
-        viewModelScope.launch {
-            repository.ensureCurrentUserProfile()
-            _isTrustedAdmin.value = repository.verifyIsTrustedAdmin()
-        }
+        refreshProfileAndRole(triggerFeedReload = false)
     }
 
     fun loadMorePosts() {
         _pageLimit.value = (_pageLimit.value + 25L).coerceAtMost(200L)
     }
 
-    fun refreshProfileAndRole() {
+    fun refreshProfileAndRole(triggerFeedReload: Boolean = true) {
+        if (triggerFeedReload) {
+            _retryTrigger.value += 1
+        }
         viewModelScope.launch {
-            repository.ensureCurrentUserProfile()
-            _isTrustedAdmin.value = repository.verifyIsTrustedAdmin()
+            try {
+                repository.ensureCurrentUserProfile()
+                _isTrustedAdmin.value = repository.verifyIsTrustedAdmin()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to refresh Community profile/role", e)
+            }
         }
     }
 

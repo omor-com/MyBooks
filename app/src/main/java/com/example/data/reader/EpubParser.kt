@@ -43,9 +43,14 @@ object EpubParser {
 
     fun parse(contentResolver: ContentResolver, uri: Uri): Result<EpubBookContent> {
         return try {
-            val entries = mutableMapOf<String, ByteArray>()
-            var totalBytes = 0L
-            val maxTotalBytes = 64L * 1024L * 1024L
+            val textEntries = mutableMapOf<String, ByteArray>()
+            val imageEntries = mutableMapOf<String, ByteArray>()
+            var textBytes = 0L
+            var imageBytes = 0L
+            val maxTextBytes = 64L * 1024L * 1024L
+            val maxImageBytes = 24L * 1024L * 1024L
+            val textExts = setOf("xml", "opf", "ncx", "xhtml", "html", "htm", "txt")
+            val imageExts = setOf("jpg", "jpeg", "png", "webp", "svg")
 
             contentResolver.openInputStream(uri)?.use { raw ->
                 ZipInputStream(BufferedInputStream(raw)).use { zis ->
@@ -53,21 +58,31 @@ object EpubParser {
                         val entry = zis.nextEntry ?: break
                         val safeName = sanitizeZipEntryPath(entry.name)
                         if (!entry.isDirectory && safeName != null) {
-                            // Skip huge fonts/videos inside epub while keeping xml/html/images
                             val ext = safeName.substringAfterLast('.', "").lowercase()
-                            if (ext in setOf("xml", "opf", "ncx", "xhtml", "html", "htm", "txt", "jpg", "jpeg", "png", "webp", "svg")) {
-                                val data = zis.readBytesBounded(6 * 1024 * 1024)
-                                totalBytes += data.size
-                                if (totalBytes > maxTotalBytes) {
-                                    throw SecurityException("EPUB archive exceeds memory safety limit")
+                            when {
+                                ext in textExts -> {
+                                    val data = zis.readBytesBounded(8 * 1024 * 1024)
+                                    textBytes += data.size
+                                    if (textBytes > maxTextBytes) {
+                                        throw SecurityException("EPUB archive text content exceeds memory safety limit")
+                                    }
+                                    textEntries[safeName] = data
                                 }
-                                entries[safeName] = data
+                                ext in imageExts && imageBytes < maxImageBytes -> {
+                                    val data = runCatching { zis.readBytesBounded(4 * 1024 * 1024) }.getOrNull()
+                                    if (data != null && imageBytes + data.size <= maxImageBytes) {
+                                        imageBytes += data.size
+                                        imageEntries[safeName] = data
+                                    }
+                                }
                             }
                         }
                         zis.closeEntry()
                     }
                 }
             } ?: return Result.failure(IllegalStateException("Unable to read EPUB file"))
+
+            val entries = textEntries + imageEntries
 
             if (entries.isEmpty()) {
                 return Result.failure(IllegalArgumentException("EPUB archive is empty or corrupted"))
