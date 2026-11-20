@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.community.AccountStatus
 import com.example.data.community.BadgeType
+import com.example.data.community.BlockedUserEntry
 import com.example.data.community.CommunityComment
 import com.example.data.community.CommunityPost
 import com.example.data.community.CommunityReport
@@ -106,7 +109,9 @@ fun MemberProfileDialog(
     onDismiss: () -> Unit,
     onSaveOwnProfile: (String, String) -> Unit,
     onSignOutOwnProfile: () -> Unit,
-    onReportProfile: () -> Unit
+    onOpenBlockedUsers: () -> Unit = {},
+    onReportProfile: () -> Unit,
+    onBlockUser: () -> Unit = {}
 ) {
     var displayName by remember(user) { mutableStateOf(user.displayName) }
     var bio by remember(user) { mutableStateOf(user.bio) }
@@ -201,6 +206,12 @@ fun MemberProfileDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedButton(
+                        onClick = onOpenBlockedUsers,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.community_blocked_users_title))
+                    }
+                    OutlinedButton(
                         onClick = onSignOutOwnProfile,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -211,6 +222,17 @@ fun MemberProfileDialog(
                         text = user.bio.ifBlank { "MyBooks Community Member" },
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    OutlinedButton(
+                        onClick = onBlockUser,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("community_profile_block_button")
+                    ) {
+                        Text(
+                            text = stringResource(R.string.community_block_user),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
 
                 HorizontalDivider()
@@ -848,4 +870,74 @@ fun AdminModerationModal(
             }
         )
     }
+}
+
+@Composable
+fun BlockedUsersDialog(
+    blockedUsers: List<BlockedUserEntry>,
+    onUnblock: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.community_blocked_users_title), fontWeight = FontWeight.Bold) },
+        text = {
+            if (blockedUsers.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.community_blocked_users_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(
+                        items = blockedUsers,
+                        key = { index, item -> item.blockedUid.ifBlank { "blocked_$index" } }
+                    ) { _, entry ->
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CommunityAvatar(
+                                    photoUrl = entry.photoUrl,
+                                    displayName = entry.displayName,
+                                    isAdmin = false,
+                                    size = 36.dp
+                                )
+                                Text(
+                                    text = entry.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { onUnblock(entry.blockedUid) }) {
+                                    Text(stringResource(R.string.community_unblock_user))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text(stringResource(R.string.action_close))
+            }
+        }
+    )
 }

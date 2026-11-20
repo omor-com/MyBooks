@@ -13,6 +13,7 @@ import com.example.data.local.entity.BookWithDetails
 import com.example.data.local.entity.CategoryEntity
 import com.example.data.local.entity.CollectionEntity
 import com.example.data.local.entity.ReadingProgressEntity
+import com.example.data.local.entity.ReadingSessionEntity
 import com.example.data.local.entity.TagEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -20,8 +21,12 @@ import kotlinx.coroutines.flow.Flow
 interface LibraryDao {
 
     @Transaction
-    @Query("SELECT * FROM books ORDER BY dateAddedEpochMs DESC")
+    @Query("SELECT * FROM books WHERE isDeleted = 0 ORDER BY dateAddedEpochMs DESC")
     fun observeAllBooksWithDetails(): Flow<List<BookWithDetails>>
+
+    @Transaction
+    @Query("SELECT * FROM books WHERE isDeleted = 1 ORDER BY deletedAtEpochMs DESC")
+    fun observeDeletedBooksWithDetails(): Flow<List<BookWithDetails>>
 
     @Transaction
     @Query("SELECT * FROM books WHERE id = :bookId LIMIT 1")
@@ -37,10 +42,13 @@ interface LibraryDao {
     @Query("SELECT * FROM books")
     suspend fun getAllBooksSnapshot(): List<BookEntity>
 
-    @Query("SELECT * FROM books WHERE contentHash = :hash AND contentHash != '' LIMIT 1")
+    @Query("SELECT * FROM books WHERE isDeleted = 0")
+    suspend fun getActiveBooksSnapshot(): List<BookEntity>
+
+    @Query("SELECT * FROM books WHERE contentHash = :hash AND contentHash != '' AND isDeleted = 0 LIMIT 1")
     suspend fun findByContentHash(hash: String): BookEntity?
 
-    @Query("SELECT * FROM books WHERE originalFilename = :filename AND fileSizeBytes = :size LIMIT 1")
+    @Query("SELECT * FROM books WHERE originalFilename = :filename AND fileSizeBytes = :size AND isDeleted = 0 LIMIT 1")
     suspend fun findByFilenameAndSize(filename: String, size: Long): BookEntity?
 
     @Query("SELECT * FROM categories ORDER BY name ASC")
@@ -82,6 +90,9 @@ interface LibraryDao {
     @Query("UPDATE books SET isFavorite = :favorite, updatedAtEpochMs = :now WHERE id = :bookId")
     suspend fun setFavorite(bookId: String, favorite: Boolean, now: Long = System.currentTimeMillis())
 
+    @Query("UPDATE books SET readingStatusName = :statusName, updatedAtEpochMs = :now WHERE id = :bookId")
+    suspend fun setReadingStatus(bookId: String, statusName: String, now: Long = System.currentTimeMillis())
+
     @Query("UPDATE books SET isFileMissing = :missing, updatedAtEpochMs = :now WHERE id = :bookId")
     suspend fun setFileMissing(bookId: String, missing: Boolean, now: Long = System.currentTimeMillis())
 
@@ -98,16 +109,16 @@ interface LibraryDao {
     @Query("UPDATE books SET coverUri = NULL, updatedAtEpochMs = :now WHERE id = :bookId")
     suspend fun clearBookCover(bookId: String, now: Long = System.currentTimeMillis())
 
-    @Query("UPDATE books SET readingProgress = :progress, lastOpenedEpochMs = :openedAt, updatedAtEpochMs = :openedAt WHERE id = :bookId")
-    suspend fun updateBookProgressSummary(bookId: String, progress: Float, openedAt: Long)
+    @Query("UPDATE books SET readingProgress = :progress, lastOpenedEpochMs = :openedAt, updatedAtEpochMs = :openedAt, readingStatusName = :autoStatusName WHERE id = :bookId")
+    suspend fun updateBookProgressSummary(bookId: String, progress: Float, openedAt: Long, autoStatusName: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertReadingProgress(progress: ReadingProgressEntity)
 
     @Transaction
-    suspend fun saveReadingProgress(progress: ReadingProgressEntity, openedAt: Long) {
+    suspend fun saveReadingProgress(progress: ReadingProgressEntity, openedAt: Long, autoStatusName: String) {
         upsertReadingProgress(progress)
-        updateBookProgressSummary(progress.bookId, progress.progressFraction, openedAt)
+        updateBookProgressSummary(progress.bookId, progress.progressFraction, openedAt, autoStatusName)
     }
 
     @Query("SELECT * FROM categories WHERE LOWER(name) = LOWER(:name) LIMIT 1")
@@ -119,8 +130,17 @@ interface LibraryDao {
     @Query("UPDATE categories SET name = :newName WHERE id = :categoryId")
     suspend fun renameCategory(categoryId: String, newName: String)
 
+    @Query("UPDATE books SET categoryId = :newCategoryId, updatedAtEpochMs = :now WHERE categoryId = :oldCategoryId")
+    suspend fun reassignBooksCategory(oldCategoryId: String, newCategoryId: String?, now: Long = System.currentTimeMillis())
+
     @Query("DELETE FROM categories WHERE id = :categoryId")
     suspend fun deleteCategoryById(categoryId: String)
+
+    @Transaction
+    suspend fun deleteCategoryWithReassignment(categoryId: String, reassignToCategoryId: String?) {
+        reassignBooksCategory(categoryId, reassignToCategoryId)
+        deleteCategoryById(categoryId)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCategories(categories: List<CategoryEntity>)
@@ -131,8 +151,17 @@ interface LibraryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTags(tags: List<TagEntity>)
 
+    @Query("SELECT * FROM collections WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    suspend fun findCollectionByName(name: String): CollectionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCollection(collection: CollectionEntity)
+
+    @Query("UPDATE collections SET name = :newName, description = :newDescription WHERE id = :collectionId")
+    suspend fun updateCollection(collectionId: String, newName: String, newDescription: String)
+
+    @Query("DELETE FROM collections WHERE id = :collectionId")
+    suspend fun deleteCollectionById(collectionId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCollections(collections: List<CollectionEntity>)
@@ -161,6 +190,12 @@ interface LibraryDao {
         collectionIds.distinct().forEach { insertBookCollectionCrossRef(BookCollectionCrossRef(bookId, it)) }
     }
 
+    @Query("UPDATE books SET isDeleted = 1, deletedAtEpochMs = :deletedAt, updatedAtEpochMs = :deletedAt WHERE id = :bookId")
+    suspend fun softDeleteBook(bookId: String, deletedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE books SET isDeleted = 0, deletedAtEpochMs = NULL, updatedAtEpochMs = :now WHERE id = :bookId")
+    suspend fun restoreDeletedBook(bookId: String, now: Long = System.currentTimeMillis())
+
     @Query("DELETE FROM notes WHERE bookId = :bookId")
     suspend fun deleteNotesForBook(bookId: String)
 
@@ -174,4 +209,17 @@ interface LibraryDao {
         }
         deleteBookById(bookId)
     }
+
+    // --- Reading Sessions & Productivity ---
+    @Query("SELECT * FROM reading_sessions ORDER BY startedAtEpochMs DESC")
+    fun observeAllReadingSessions(): Flow<List<ReadingSessionEntity>>
+
+    @Query("SELECT * FROM reading_sessions ORDER BY startedAtEpochMs DESC")
+    suspend fun getAllReadingSessionsSnapshot(): List<ReadingSessionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReadingSession(session: ReadingSessionEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertReadingSessions(sessions: List<ReadingSessionEntity>)
 }

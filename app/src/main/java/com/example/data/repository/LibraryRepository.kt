@@ -16,14 +16,24 @@ import com.example.data.local.entity.CollectionEntity
 import com.example.data.local.entity.HighlightEntity
 import com.example.data.local.entity.NoteEntity
 import com.example.data.local.entity.ReadingProgressEntity
+import com.example.data.local.entity.ReadingSessionEntity
+import com.example.data.local.entity.ReadingStatus
 import com.example.data.local.entity.TagEntity
 import com.example.data.reader.DocumentFormat
 import com.example.data.reader.DocumentValidator
 import com.example.data.reader.EpubParser
+import com.example.data.reader.ExtendedDocumentParser
+import com.example.data.reader.PdfTextExtractor
+import com.example.data.reader.ReaderCategory
+import com.example.data.reader.TextBlock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.TimeZone
 import java.util.UUID
 import kotlin.math.max
 
@@ -37,18 +47,54 @@ sealed interface ImportOutcome {
     data class Failed(val filename: String, val reason: String) : ImportOutcome
 }
 
+data class BookContentMatch(
+    val bookId: String,
+    val bookTitle: String,
+    val locationLabel: String,
+    val snippet: String,
+    val pageIndex: Int = 0,
+    val chapterIndex: Int = 0
+)
+
+data class StorageBreakdown(
+    val importedBooksBytes: Long,
+    val coversBytes: Long,
+    val audioBytes: Long,
+    val cacheBytes: Long
+) {
+    val totalBytes: Long get() = importedBooksBytes + coversBytes + audioBytes + cacheBytes
+}
+
+data class ReadingStreakSummary(
+    val todayMinutes: Int,
+    val totalMinutes: Int,
+    val currentStreakDays: Int,
+    val bestStreakDays: Int,
+    val minutesByEpochDay: Map<Long, Int>
+)
+
+@Serializable
+data class AnnotationExportPayload(
+    val exportedAtEpochMs: Long,
+    val bookmarks: List<BookmarkEntity>,
+    val highlights: List<HighlightEntity>,
+    val notes: List<NoteEntity>
+)
+
 class LibraryRepository(
     private val context: Context,
     private val libraryDao: LibraryDao,
     private val annotationDao: AnnotationDao
 ) {
     val allBooksWithDetails: Flow<List<BookWithDetails>> = libraryDao.observeAllBooksWithDetails()
+    val deletedBooksWithDetails: Flow<List<BookWithDetails>> = libraryDao.observeDeletedBooksWithDetails()
     val categories: Flow<List<CategoryEntity>> = libraryDao.observeCategories()
     val tags: Flow<List<TagEntity>> = libraryDao.observeTags()
     val collections: Flow<List<CollectionEntity>> = libraryDao.observeCollections()
     val allBookmarks: Flow<List<BookmarkEntity>> = annotationDao.observeAllBookmarks()
     val allHighlights: Flow<List<HighlightEntity>> = annotationDao.observeAllHighlights()
     val allNotes: Flow<List<NoteEntity>> = annotationDao.observeAllNotes()
+    val readingSessions: Flow<List<ReadingSessionEntity>> = libraryDao.observeAllReadingSessions()
 
     fun observeBook(bookId: String): Flow<BookWithDetails?> = libraryDao.observeBookWithDetails(bookId)
     fun observeBookmarksForBook(bookId: String): Flow<List<BookmarkEntity>> = annotationDao.observeBookmarksForBook(bookId)
@@ -311,9 +357,10 @@ class LibraryRepository(
         true
     }
 
-    suspend fun deleteCategory(categoryId: String) = withContext(Dispatchers.IO) {
-        libraryDao.deleteCategoryById(categoryId)
-    }
+    suspend fun deleteCategory(categoryId: String, reassignToCategoryId: String? = null) =
+        withContext(Dispatchers.IO) {
+            libraryDao.deleteCategoryWithReassignment(categoryId, reassignToCategoryId)
+        }
 
     suspend fun importExternalWithMetadata(
         uri: Uri,
@@ -424,17 +471,46 @@ class LibraryRepository(
 
     suspend fun createCollection(name: String, description: String = ""): CollectionEntity =
         withContext(Dispatchers.IO) {
+            val clean = name.trim()
+            val existing = libraryDao.findCollectionByName(clean)
+            if (existing != null) return@withContext existing
             val c = CollectionEntity(
                 id = UUID.randomUUID().toString(),
-                name = name.trim(),
+                name = clean,
                 description = description.trim()
             )
             libraryDao.insertCollection(c)
             c
         }
 
+    suspend fun updateCollection(collectionId: String, newName: String, newDescription: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val clean = newName.trim()
+            if (clean.isEmpty()) return@withContext false
+            val conflict = libraryDao.findCollectionByName(clean)
+            if (conflict != null && conflict.id != collectionId) return@withContext false
+            libraryDao.updateCollection(collectionId, clean, newDescription.trim())
+            true
+        }
+
+    suspend fun deleteCollection(collectionId: String) = withContext(Dispatchers.IO) {
+        libraryDao.deleteCollectionById(collectionId)
+    }
+
     suspend fun toggleFavorite(bookId: String, currentFavorite: Boolean) {
         libraryDao.setFavorite(bookId, !currentFavorite)
+    }
+
+    suspend fun setReadingStatus(bookId: String, status: ReadingStatus) {
+        libraryDao.setReadingStatus(bookId, status.name)
+    }
+
+    suspend fun softDeleteBook(bookId: String) {
+        libraryDao.softDeleteBook(bookId)
+    }
+
+    suspend fun restoreBookFromTrash(bookId: String) {
+        libraryDao.restoreDeletedBook(bookId)
     }
 
     suspend fun removeBookFromLibrary(bookId: String, deleteNotes: Boolean) {
@@ -452,10 +528,18 @@ class LibraryRepository(
         locatorJson: String
     ) {
         val now = System.currentTimeMillis()
+        val safeFraction = progressFraction.coerceIn(0f, 1f)
+        val existing = libraryDao.getBookById(bookId)
+        val autoStatusName = when {
+            safeFraction >= 0.99f -> ReadingStatus.FINISHED.name
+            existing?.readingStatusName == ReadingStatus.FINISHED.name -> ReadingStatus.FINISHED.name
+            safeFraction > 0f || pageIndex > 0 || chapterIndex > 0 -> ReadingStatus.CURRENTLY_READING.name
+            else -> existing?.readingStatusName ?: ReadingStatus.WANT_TO_READ.name
+        }
         libraryDao.saveReadingProgress(
             ReadingProgressEntity(
                 bookId = bookId,
-                progressFraction = progressFraction.coerceIn(0f, 1f),
+                progressFraction = safeFraction,
                 pageIndex = pageIndex,
                 totalPages = maxOf(1, totalPages),
                 chapterIndex = chapterIndex,
@@ -464,8 +548,263 @@ class LibraryRepository(
                 locatorJson = locatorJson,
                 updatedAtEpochMs = now
             ),
-            openedAt = now
+            openedAt = now,
+            autoStatusName = autoStatusName
         )
+    }
+
+    suspend fun recordReadingSession(
+        bookId: String?,
+        bookTitle: String,
+        durationSeconds: Int,
+        pagesRead: Int = 0,
+        startedAtEpochMs: Long,
+        endedAtEpochMs: Long = System.currentTimeMillis(),
+        isFocusTimer: Boolean = false
+    ) = withContext(Dispatchers.IO) {
+        if (durationSeconds < 10) return@withContext
+        val session = ReadingSessionEntity(
+            id = UUID.randomUUID().toString(),
+            bookId = bookId,
+            bookTitleSnapshot = bookTitle,
+            epochDay = localEpochDay(endedAtEpochMs),
+            durationSeconds = durationSeconds.coerceAtLeast(1),
+            pagesRead = pagesRead.coerceAtLeast(0),
+            startedAtEpochMs = startedAtEpochMs,
+            endedAtEpochMs = endedAtEpochMs,
+            isFocusTimer = isFocusTimer
+        )
+        libraryDao.insertReadingSession(session)
+    }
+
+    suspend fun searchLibraryContent(
+        query: String,
+        books: List<BookWithDetails>,
+        maxResults: Int = 30
+    ): List<BookContentMatch> = withContext(Dispatchers.IO) {
+        val clean = query.trim()
+        if (clean.length < 2) return@withContext emptyList()
+        val matches = mutableListOf<BookContentMatch>()
+        for (details in books) {
+            if (matches.size >= maxResults) break
+            val book = details.book
+            if (book.isDeleted || book.isFileMissing) continue
+            val uri = runCatching { Uri.parse(book.fileUri) }.getOrNull() ?: continue
+            val format = DocumentFormat.fromName(book.formatName)
+            when (format.readerCategory) {
+                ReaderCategory.EPUB -> {
+                    EpubParser.parse(context.contentResolver, uri).onSuccess { epub ->
+                        for ((chIdx, ch) in epub.chapters.withIndex()) {
+                            for (block in ch.paragraphs) {
+                                val text = blockText(block)
+                                val idx = text.indexOf(clean, ignoreCase = true)
+                                if (idx >= 0) {
+                                    matches += BookContentMatch(
+                                        bookId = book.id,
+                                        bookTitle = book.title,
+                                        locationLabel = ch.title,
+                                        snippet = excerptAround(text, idx, clean.length),
+                                        chapterIndex = chIdx
+                                    )
+                                    break
+                                }
+                            }
+                            if (matches.size >= maxResults) break
+                        }
+                    }
+                }
+                ReaderCategory.REFLOWABLE_TEXT -> {
+                    ExtendedDocumentParser.parseTextDocument(
+                        contentResolver = context.contentResolver,
+                        uri = uri,
+                        format = format,
+                        fallbackTitle = book.title
+                    ).onSuccess { doc ->
+                        for ((secIdx, sec) in doc.sections.withIndex()) {
+                            for (block in sec.blocks) {
+                                val text = blockText(block)
+                                val idx = text.indexOf(clean, ignoreCase = true)
+                                if (idx >= 0) {
+                                    matches += BookContentMatch(
+                                        bookId = book.id,
+                                        bookTitle = book.title,
+                                        locationLabel = sec.title,
+                                        snippet = excerptAround(text, idx, clean.length),
+                                        chapterIndex = secIdx
+                                    )
+                                    break
+                                }
+                            }
+                            if (matches.size >= maxResults) break
+                        }
+                    }
+                }
+                ReaderCategory.PDF -> {
+                    val hits = PdfTextExtractor.searchPdfText(
+                        contentResolver = context.contentResolver,
+                        uri = uri,
+                        query = clean,
+                        maxHits = 3
+                    )
+                    hits.forEach { hit ->
+                        matches += BookContentMatch(
+                            bookId = book.id,
+                            bookTitle = book.title,
+                            locationLabel = "Page ${hit.pageIndex + 1}",
+                            snippet = hit.snippet,
+                            pageIndex = hit.pageIndex
+                        )
+                    }
+                }
+                ReaderCategory.IMAGE_COLLECTION -> Unit
+            }
+        }
+        matches.take(maxResults)
+    }
+
+    suspend fun exportAnnotationsMarkdown(destUri: Uri): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val booksById = libraryDao.getAllBooksSnapshot().associateBy { it.id }
+            val bookmarks = annotationDao.getAllBookmarksSnapshot()
+            val highlights = annotationDao.getAllHighlightsSnapshot()
+            val notes = annotationDao.getAllNotesSnapshot()
+
+            val sb = StringBuilder()
+            sb.appendLine("# MyBooks Annotations & Notes Export")
+            sb.appendLine()
+            sb.appendLine("Total: ${bookmarks.size} bookmarks, ${highlights.size} highlights, ${notes.size} notes")
+            sb.appendLine()
+
+            if (highlights.isNotEmpty()) {
+                sb.appendLine("## Highlights")
+                sb.appendLine()
+                highlights.forEach { hl ->
+                    val bookTitle = booksById[hl.bookId]?.title ?: hl.bookTitleSnapshot
+                    sb.appendLine("- **${bookTitle}** (${hl.locatorDisplay.ifBlank { "Page ${hl.pageIndex + 1}" }})")
+                    sb.appendLine("  > ${hl.selectedText}")
+                }
+                sb.appendLine()
+            }
+
+            if (notes.isNotEmpty()) {
+                sb.appendLine("## Notes")
+                sb.appendLine()
+                notes.forEach { note ->
+                    val bookTitle = note.bookId?.let { booksById[it]?.title } ?: note.bookTitleSnapshot
+                    val header = note.title.ifBlank { "Note" }
+                    sb.appendLine("### $header")
+                    if (bookTitle.isNotBlank()) {
+                        sb.appendLine("*Book: $bookTitle* ${if (note.locatorDisplay.isNotBlank()) "— ${note.locatorDisplay}" else ""}")
+                    }
+                    sb.appendLine()
+                    sb.appendLine(note.content)
+                    sb.appendLine()
+                }
+            }
+
+            if (bookmarks.isNotEmpty()) {
+                sb.appendLine("## Bookmarks")
+                sb.appendLine()
+                bookmarks.forEach { bm ->
+                    val bookTitle = booksById[bm.bookId]?.title ?: ""
+                    sb.appendLine("- **$bookTitle**: ${bm.title} (${bm.locatorDisplay.ifBlank { "Page ${bm.pageIndex + 1}" }})")
+                }
+                sb.appendLine()
+            }
+
+            context.contentResolver.openOutputStream(destUri)?.use { out ->
+                out.write(sb.toString().toByteArray(Charsets.UTF_8))
+            } ?: return@withContext Result.failure(IllegalStateException("Cannot write export file"))
+            Result.success(bookmarks.size + highlights.size + notes.size)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun exportAnnotationsJson(destUri: Uri): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val bookmarks = annotationDao.getAllBookmarksSnapshot()
+            val highlights = annotationDao.getAllHighlightsSnapshot()
+            val notes = annotationDao.getAllNotesSnapshot()
+            val payload = AnnotationExportPayload(
+                exportedAtEpochMs = System.currentTimeMillis(),
+                bookmarks = bookmarks,
+                highlights = highlights,
+                notes = notes
+            )
+            val json = Json { prettyPrint = true; encodeDefaults = true }
+            context.contentResolver.openOutputStream(destUri)?.use { out ->
+                out.write(json.encodeToString(payload).toByteArray(Charsets.UTF_8))
+            } ?: return@withContext Result.failure(IllegalStateException("Cannot write JSON export"))
+            Result.success(bookmarks.size + highlights.size + notes.size)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun blockText(block: TextBlock): String = when (block) {
+        is TextBlock.Heading -> block.text
+        is TextBlock.Paragraph -> block.text
+        is TextBlock.Quote -> block.text
+        is TextBlock.Code -> block.text
+        is TextBlock.BulletItem -> block.text
+    }
+
+    private fun excerptAround(text: String, idx: Int, queryLen: Int): String {
+        val start = (idx - 35).coerceAtLeast(0)
+        val end = (idx + queryLen + 70).coerceAtMost(text.length)
+        val prefix = if (start > 0) "…" else ""
+        val suffix = if (end < text.length) "…" else ""
+        return (prefix + text.substring(start, end) + suffix).replace(Regex("\\s+"), " ").trim()
+    }
+
+    companion object {
+        fun localEpochDay(epochMs: Long = System.currentTimeMillis()): Long {
+            val offset = TimeZone.getDefault().getOffset(epochMs)
+            return (epochMs + offset) / 86_400_000L
+        }
+
+        fun calculateStreakSummary(
+            sessions: List<ReadingSessionEntity>,
+            dailyGoalMinutes: Int,
+            nowEpochMs: Long = System.currentTimeMillis()
+        ): ReadingStreakSummary {
+            val todayDay = localEpochDay(nowEpochMs)
+            val secByDay = sessions.groupBy { it.epochDay }
+                .mapValues { (_, list) -> list.sumOf { it.durationSeconds } }
+            val minByDay = secByDay.mapValues { (_, sec) -> sec / 60 }
+
+            val todayMinutes = (secByDay[todayDay] ?: 0) / 60
+            val totalMinutes = sessions.sumOf { it.durationSeconds } / 60
+
+            // Current streak counts consecutive days with reading activity (at least 1 min or session) ending today or yesterday
+            val qualifiedDays = secByDay.filterValues { it >= 60 }.keys.sorted()
+            var currentStreak = 0
+            if (qualifiedDays.isNotEmpty()) {
+                var checkDay = if ((secByDay[todayDay] ?: 0) >= 60) todayDay else todayDay - 1
+                while ((secByDay[checkDay] ?: 0) >= 60) {
+                    currentStreak++
+                    checkDay--
+                }
+            }
+
+            var bestStreak = 0
+            var run = 0
+            var prev: Long? = null
+            for (day in qualifiedDays) {
+                run = if (prev != null && day == prev + 1L) run + 1 else 1
+                if (run > bestStreak) bestStreak = run
+                prev = day
+            }
+
+            return ReadingStreakSummary(
+                todayMinutes = todayMinutes,
+                totalMinutes = totalMinutes,
+                currentStreakDays = currentStreak,
+                bestStreakDays = maxOf(bestStreak, currentStreak),
+                minutesByEpochDay = minByDay
+            )
+        }
     }
 
     suspend fun addBookmark(
@@ -553,14 +892,26 @@ class LibraryRepository(
 
     suspend fun deleteNote(noteId: String) = annotationDao.deleteNote(noteId)
 
-    fun calculateAppCacheSizeBytes(): Long {
+    fun calculateStorageBreakdown(): StorageBreakdown {
         fun dirSize(f: File): Long {
             if (!f.exists()) return 0L
             if (f.isFile) return f.length()
             return f.listFiles()?.sumOf { dirSize(it) } ?: 0L
         }
-        return dirSize(context.cacheDir)
+        val booksBytes = dirSize(File(context.filesDir, "imported_books")) +
+            dirSize(File(context.filesDir, "restored_books"))
+        val coversBytes = dirSize(File(context.filesDir, "covers"))
+        val audioBytes = dirSize(File(context.filesDir, "audio"))
+        val cacheBytes = dirSize(context.cacheDir)
+        return StorageBreakdown(
+            importedBooksBytes = booksBytes,
+            coversBytes = coversBytes,
+            audioBytes = audioBytes,
+            cacheBytes = cacheBytes
+        )
     }
+
+    fun calculateAppCacheSizeBytes(): Long = calculateStorageBreakdown().cacheBytes
 
     fun clearAppCache() {
         context.cacheDir.listFiles()?.forEach { child ->

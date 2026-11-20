@@ -52,6 +52,7 @@
         "content": { "type": "string", "description": "Post text and emojis (1..2000 chars)." },
         "driveLink": { "type": "string", "description": "Optional validated Google Drive/Docs HTTPS URL." },
         "bookTitle": { "type": "string", "description": "Book title shown on the Google Drive button when driveLink is provided (0..120 chars)." },
+        "likeCount": { "type": "integer", "description": "Non-negative atomic like counter updated via reactions transactions." },
         "visibility": {
           "type": "string",
           "enum": ["visible", "hidden", "removed"],
@@ -62,6 +63,28 @@
         "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
       },
       "required": ["authorUid", "authorName", "authorPhotoUrl", "authorBadge", "content", "visibility", "createdAt", "updatedAt"]
+    },
+    "PostReaction": {
+      "title": "PostReaction",
+      "description": "Per-user like marker stored atomically alongside CommunityPost.likeCount.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID of reacting user." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." }
+      },
+      "required": ["uid", "createdAt"]
+    },
+    "BlockedUserEntry": {
+      "title": "BlockedUserEntry",
+      "description": "Owner-private blocked user entry stored under community_users/{userId}/blocked_users/{blockedUid}.",
+      "type": "object",
+      "properties": {
+        "blockedUid": { "type": "string", "description": "UID of the blocked Community user." },
+        "displayName": { "type": "string", "description": "Snapshot display name of blocked user." },
+        "photoUrl": { "type": "string", "description": "Snapshot avatar URL of blocked user." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." }
+      },
+      "required": ["blockedUid", "displayName", "createdAt"]
     },
     "CommunityComment": {
       "title": "CommunityComment",
@@ -137,6 +160,10 @@
       "schema": { "$ref": "#/entities/CommunityUser" },
       "description": "Community user profiles and admin-controlled badge/account status states."
     },
+    "/community_users/{userId}/blocked_users/{blockedUid}": {
+      "schema": { "$ref": "#/entities/BlockedUserEntry" },
+      "description": "Owner-private blocked Community member list."
+    },
     "/admins/{userId}": {
       "schema": { "$ref": "#/entities/AdminMarker" },
       "description": "Server-provisioned administrator markers."
@@ -144,6 +171,10 @@
     "/community_posts/{postId}": {
       "schema": { "$ref": "#/entities/CommunityPost" },
       "description": "Community book discussion posts."
+    },
+    "/community_posts/{postId}/reactions/{reactionUid}": {
+      "schema": { "$ref": "#/entities/PostReaction" },
+      "description": "Per-user like markers paired atomically with CommunityPost.likeCount."
     },
     "/community_posts/{postId}/comments/{commentId}": {
       "schema": { "$ref": "#/entities/CommunityComment" },

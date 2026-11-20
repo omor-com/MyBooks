@@ -489,3 +489,112 @@ test("Reports support post, comment, and profile types, isolate reporter privacy
   // Normal user cannot read or write audit logs
   await assertFails(aliceDb.collection("moderation_audit_logs").get());
 });
+
+test("Post likes enforce atomic reaction + likeCount updates and reject direct counter tampering", async () => {
+  const aliceDb = testEnv.authenticatedContext(ALICE_UID, {
+    email: "alice@example.com",
+    email_verified: true,
+  }).firestore();
+  const bobDb = testEnv.authenticatedContext(BOB_UID, {
+    email: "bob@example.com",
+    email_verified: true,
+  }).firestore();
+
+  await assertSucceeds(aliceDb.collection("community_users").doc(ALICE_UID).set(makeUserPayload(ALICE_UID, "none")));
+  await assertSucceeds(bobDb.collection("community_users").doc(BOB_UID).set(makeUserPayload(BOB_UID, "none")));
+
+  const now = new Date(Date.now() - 1000);
+  const postRefAlice = aliceDb.collection("community_posts").doc("post_like_1");
+  await assertSucceeds(
+    postRefAlice.set({
+      authorUid: ALICE_UID,
+      authorName: "Alice",
+      authorPhotoUrl: "https://pockethostbd.github.io/drive-one/picture/mybookscommunity-userprofilepicture.png",
+      authorBadge: "none",
+      content: "Recommend a Bengali classic",
+      likeCount: 0,
+      visibility: "visible",
+      createdAt: now,
+      updatedAt: now,
+    })
+  );
+
+  // Standalone tampering of likeCount without matching reaction fails
+  await assertFails(
+    bobDb.collection("community_posts").doc("post_like_1").update({ likeCount: 99 })
+  );
+
+  // Standalone creation of reaction without updating post likeCount fails
+  await assertFails(
+    bobDb.collection("community_posts").doc("post_like_1").collection("reactions").doc(BOB_UID).set({
+      uid: BOB_UID,
+      createdAt: now,
+    })
+  );
+
+  // Atomic batch/transaction creating reaction and incrementing likeCount by 1 succeeds
+  const postRefBob = bobDb.collection("community_posts").doc("post_like_1");
+  const reactionRefBob = postRefBob.collection("reactions").doc(BOB_UID);
+  const likeBatch = bobDb.batch();
+  likeBatch.set(reactionRefBob, { uid: BOB_UID, createdAt: new Date(Date.now() - 500) });
+  likeBatch.update(postRefBob, { likeCount: 1 });
+  await assertSucceeds(likeBatch.commit());
+
+  // Inflating likeCount by +5 during reaction fails
+  const aliceLikeCheat = aliceDb.batch();
+  aliceLikeCheat.set(postRefAlice.collection("reactions").doc(ALICE_UID), {
+    uid: ALICE_UID,
+    createdAt: new Date(Date.now() - 400),
+  });
+  aliceLikeCheat.update(postRefAlice, { likeCount: 6 });
+  await assertFails(aliceLikeCheat.commit());
+
+  // Atomic unlike (delete reaction + decrement likeCount by 1) succeeds
+  const unlikeBatch = bobDb.batch();
+  unlikeBatch.delete(reactionRefBob);
+  unlikeBatch.update(postRefBob, { likeCount: 0 });
+  await assertSucceeds(unlikeBatch.commit());
+});
+
+test("Blocked users subcollection is strictly owner-isolated and prevents self-blocking", async () => {
+  const aliceDb = testEnv.authenticatedContext(ALICE_UID, {
+    email: "alice@example.com",
+    email_verified: true,
+  }).firestore();
+  const bobDb = testEnv.authenticatedContext(BOB_UID, {
+    email: "bob@example.com",
+    email_verified: true,
+  }).firestore();
+
+  const now = new Date(Date.now() - 1000);
+  // Cannot block self
+  await assertFails(
+    aliceDb.collection("community_users").doc(ALICE_UID).collection("blocked_users").doc(ALICE_UID).set({
+      blockedUid: ALICE_UID,
+      displayName: "Alice",
+      createdAt: now,
+    })
+  );
+
+  // Alice blocks Bob cleanly
+  await assertSucceeds(
+    aliceDb.collection("community_users").doc(ALICE_UID).collection("blocked_users").doc(BOB_UID).set({
+      blockedUid: BOB_UID,
+      displayName: "Bob",
+      photoUrl: "https://pockethostbd.github.io/drive-one/picture/mybookscommunity-userprofilepicture.png",
+      createdAt: now,
+    })
+  );
+
+  // Alice can list her blocked users; Bob cannot read Alice's blocked list or write to it
+  await assertSucceeds(aliceDb.collection("community_users").doc(ALICE_UID).collection("blocked_users").get());
+  await assertFails(bobDb.collection("community_users").doc(ALICE_UID).collection("blocked_users").get());
+  await assertFails(
+    bobDb.collection("community_users").doc(ALICE_UID).collection("blocked_users").doc(BOB_UID).delete()
+  );
+
+  // Alice can unblock Bob
+  await assertSucceeds(
+    aliceDb.collection("community_users").doc(ALICE_UID).collection("blocked_users").doc(BOB_UID).delete()
+  );
+});

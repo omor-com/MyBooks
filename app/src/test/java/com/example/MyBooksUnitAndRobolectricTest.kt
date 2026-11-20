@@ -2,6 +2,7 @@ package com.example
 
 import android.content.Context
 import android.net.Uri
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.audio.PageTurnSoundManager
@@ -15,19 +16,30 @@ import com.example.data.community.CommunityLinkValidator
 import com.example.data.community.CommunityPost
 import com.example.data.local.MyBooksDatabase
 import com.example.data.local.entity.BookEntity
+import com.example.data.local.entity.CategoryEntity
 import com.example.data.local.entity.NoteEntity
+import com.example.data.local.entity.ReadingSessionEntity
+import com.example.data.local.entity.ReadingStatus
+import com.example.data.local.entity.resolvedReadingStatus
 import com.example.data.preferences.PdfFitMode
+import com.example.data.preferences.PdfScrollMode
+import com.example.data.preferences.ReflowablePaginationMode
+import com.example.data.preferences.TapZoneMode
 import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.reader.DocumentFormat
 import com.example.data.reader.DocumentValidator
 import com.example.data.reader.EpubParser
 import com.example.data.reader.ExtendedDocumentParser
+import com.example.data.reader.PdfTextExtractor
 import com.example.data.reader.SafeHtmlTextParser
 import com.example.data.reader.TextBlock
+import com.example.data.reader.TtsReadAloudManager
 import com.example.data.repository.LibraryRepository
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.viewmodel.ReaderContentState
 import com.example.ui.viewmodel.ReaderViewModel
+import android.database.sqlite.SQLiteDatabase
+import java.security.MessageDigest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -468,6 +480,7 @@ class MyBooksUnitAndRobolectricTest {
             zos.closeEntry()
         }
         val soundManager = PageTurnSoundManager(context, prefsRepo)
+        val ttsManager = TtsReadAloudManager(context)
         val vm = ReaderViewModel(
             appContext = context,
             bookId = "",
@@ -476,7 +489,8 @@ class MyBooksUnitAndRobolectricTest {
             initialChapterOverride = null,
             libraryRepository = libraryRepo,
             preferencesRepository = prefsRepo,
-            soundManager = soundManager
+            soundManager = soundManager,
+            ttsManager = ttsManager
         )
 
         awaitMainCondition { vm.contentState.value !is ReaderContentState.Loading }
@@ -502,6 +516,7 @@ class MyBooksUnitAndRobolectricTest {
         assertEquals(1, progress!!.chapterIndex)
         assertEquals(2, progress.scrollOffset)
         soundManager.release()
+        ttsManager.release()
     }
 
     @Test
@@ -512,6 +527,7 @@ class MyBooksUnitAndRobolectricTest {
         val imported = (libraryRepo.importDocument(Uri.fromFile(bookFile), takePersistablePermission = false)
             as com.example.data.repository.ImportOutcome.Imported).book
         val soundManager = PageTurnSoundManager(context, prefsRepo)
+        val ttsManager = TtsReadAloudManager(context)
 
         val vm1 = ReaderViewModel(
             appContext = context,
@@ -521,7 +537,8 @@ class MyBooksUnitAndRobolectricTest {
             initialChapterOverride = null,
             libraryRepository = libraryRepo,
             preferencesRepository = prefsRepo,
-            soundManager = soundManager
+            soundManager = soundManager,
+            ttsManager = ttsManager
         )
         awaitMainCondition { vm1.contentState.value !is ReaderContentState.Loading }
         assertTrue(vm1.contentState.value is ReaderContentState.TextDocumentReady)
@@ -542,20 +559,253 @@ class MyBooksUnitAndRobolectricTest {
             initialChapterOverride = null,
             libraryRepository = libraryRepo,
             preferencesRepository = prefsRepo,
-            soundManager = soundManager
+            soundManager = soundManager,
+            ttsManager = ttsManager
         )
         awaitMainCondition { vm2.contentState.value !is ReaderContentState.Loading }
         val reopened = vm2.contentState.value as ReaderContentState.TextDocumentReady
         assertEquals(9, reopened.initialScrollOffset)
         soundManager.release()
+        ttsManager.release()
     }
 
     @Test
-    fun `pdf fit mode preference persists and resets cleanly`() = runBlocking {
+    fun `pdf fit mode, scroll mode, reflowable pagination, and tap zone preferences persist and reset cleanly`() = runBlocking {
         assertEquals(PdfFitMode.FIT_PAGE, prefsRepo.preferencesFlow.first().readerPdfFitMode)
+        assertEquals(PdfScrollMode.SINGLE_PAGE, prefsRepo.preferencesFlow.first().readerPdfScrollMode)
+        assertEquals(ReflowablePaginationMode.PAGINATED, prefsRepo.preferencesFlow.first().readerReflowableMode)
+        assertEquals(TapZoneMode.STANDARD, prefsRepo.preferencesFlow.first().readerTapZoneMode)
+
         prefsRepo.setReaderPdfFitMode(PdfFitMode.FIT_WIDTH)
-        assertEquals(PdfFitMode.FIT_WIDTH, prefsRepo.preferencesFlow.first().readerPdfFitMode)
+        prefsRepo.setReaderPdfScrollMode(PdfScrollMode.CONTINUOUS_VERTICAL)
+        prefsRepo.setReaderReflowableMode(ReflowablePaginationMode.CONTINUOUS_SCROLL)
+        prefsRepo.setTapZoneMode(TapZoneMode.LEFT_HANDED)
+
+        val updated = prefsRepo.preferencesFlow.first()
+        assertEquals(PdfFitMode.FIT_WIDTH, updated.readerPdfFitMode)
+        assertEquals(PdfScrollMode.CONTINUOUS_VERTICAL, updated.readerPdfScrollMode)
+        assertEquals(ReflowablePaginationMode.CONTINUOUS_SCROLL, updated.readerReflowableMode)
+        assertEquals(TapZoneMode.LEFT_HANDED, updated.readerTapZoneMode)
+
         prefsRepo.resetReadingPreferences()
-        assertEquals(PdfFitMode.FIT_PAGE, prefsRepo.preferencesFlow.first().readerPdfFitMode)
+        val reset = prefsRepo.preferencesFlow.first()
+        assertEquals(PdfFitMode.FIT_PAGE, reset.readerPdfFitMode)
+        assertEquals(PdfScrollMode.SINGLE_PAGE, reset.readerPdfScrollMode)
+        assertEquals(ReflowablePaginationMode.PAGINATED, reset.readerReflowableMode)
+        assertEquals(TapZoneMode.STANDARD, reset.readerTapZoneMode)
+    }
+
+    @Test
+    fun `room MIGRATION_1_2 preserves existing v1 books and notes cleanly without data loss`() = runBlocking {
+        val dbFile = File(tempDir, "legacy_v1_library.db")
+        val legacyDb = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `categories` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `isDefault` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+        legacyDb.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_categories_name` ON `categories` (`name`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `books` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `author` TEXT NOT NULL, `description` TEXT NOT NULL, `publisher` TEXT NOT NULL, `language` TEXT NOT NULL, `categoryId` TEXT, `dateAddedEpochMs` INTEGER NOT NULL, `coverUri` TEXT, `originalFilename` TEXT NOT NULL, `formatName` TEXT NOT NULL, `fileUri` TEXT NOT NULL, `fileSizeBytes` INTEGER NOT NULL, `contentHash` TEXT NOT NULL, `readingProgress` REAL NOT NULL, `lastOpenedEpochMs` INTEGER NOT NULL, `isFavorite` INTEGER NOT NULL, `isFileMissing` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_books_categoryId` ON `books` (`categoryId`)")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_books_contentHash` ON `books` (`contentHash`)")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_books_lastOpenedEpochMs` ON `books` (`lastOpenedEpochMs`)")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_books_dateAddedEpochMs` ON `books` (`dateAddedEpochMs`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `tags` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`id`))")
+        legacyDb.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_tags_name` ON `tags` (`name`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `collections` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+        legacyDb.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_collections_name` ON `collections` (`name`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `book_tag_cross_ref` (`bookId` TEXT NOT NULL, `tagId` TEXT NOT NULL, PRIMARY KEY(`bookId`, `tagId`), FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_book_tag_cross_ref_tagId` ON `book_tag_cross_ref` (`tagId`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `book_collection_cross_ref` (`bookId` TEXT NOT NULL, `collectionId` TEXT NOT NULL, PRIMARY KEY(`bookId`, `collectionId`), FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`collectionId`) REFERENCES `collections`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_book_collection_cross_ref_collectionId` ON `book_collection_cross_ref` (`collectionId`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `reading_progress` (`bookId` TEXT NOT NULL, `progressFraction` REAL NOT NULL, `pageIndex` INTEGER NOT NULL, `totalPages` INTEGER NOT NULL, `chapterIndex` INTEGER NOT NULL, `totalChapters` INTEGER NOT NULL, `scrollOffset` INTEGER NOT NULL, `locatorJson` TEXT NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`bookId`), FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `bookmarks` (`id` TEXT NOT NULL, `bookId` TEXT NOT NULL, `title` TEXT NOT NULL, `locatorJson` TEXT NOT NULL, `locatorDisplay` TEXT NOT NULL, `pageIndex` INTEGER NOT NULL, `chapterIndex` INTEGER NOT NULL, `scrollOffset` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_bookmarks_bookId` ON `bookmarks` (`bookId`)")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_bookmarks_createdAtEpochMs` ON `bookmarks` (`createdAtEpochMs`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `highlights` (`id` TEXT NOT NULL, `bookId` TEXT NOT NULL, `bookTitleSnapshot` TEXT NOT NULL, `selectedText` TEXT NOT NULL, `locatorJson` TEXT NOT NULL, `locatorDisplay` TEXT NOT NULL, `pageIndex` INTEGER NOT NULL, `chapterIndex` INTEGER NOT NULL, `colorHex` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_highlights_bookId` ON `highlights` (`bookId`)")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_highlights_createdAtEpochMs` ON `highlights` (`createdAtEpochMs`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS `notes` (`id` TEXT NOT NULL, `bookId` TEXT, `bookTitleSnapshot` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `locatorJson` TEXT NOT NULL, `locatorDisplay` TEXT NOT NULL, `pageIndex` INTEGER NOT NULL, `chapterIndex` INTEGER NOT NULL, `scrollOffset` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bookId`) REFERENCES `books`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_bookId` ON `notes` (`bookId`)")
+        legacyDb.execSQL("CREATE INDEX IF NOT EXISTS `index_notes_updatedAtEpochMs` ON `notes` (`updatedAtEpochMs`)")
+        legacyDb.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+        legacyDb.execSQL("INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES(42, 'cbd993f1b2f342c315fdbb5b1dbbe117')")
+
+        legacyDb.execSQL("INSERT INTO categories VALUES('cat-1', 'Bangla Classics', 0)")
+        legacyDb.execSQL("INSERT INTO books VALUES('b-want', 'Want Book', 'A', '', '', 'bn', 'cat-1', 1000, NULL, 'want.txt', 'TXT', 'file:///want.txt', 100, 'h1', 0.0, 0, 0, 0, 1000)")
+        legacyDb.execSQL("INSERT INTO books VALUES('b-read', 'Reading Book', 'B', '', '', 'bn', 'cat-1', 2000, NULL, 'read.txt', 'TXT', 'file:///read.txt', 200, 'h2', 0.45, 2500, 1, 0, 2500)")
+        legacyDb.execSQL("INSERT INTO books VALUES('b-done', 'Done Book', 'C', '', '', 'bn', 'cat-1', 3000, NULL, 'done.txt', 'TXT', 'file:///done.txt', 300, 'h3', 1.0, 3500, 0, 0, 3500)")
+        legacyDb.execSQL("INSERT INTO notes VALUES('n-1', 'b-read', 'Reading Book', 'Preserved Note', 'My v1 note body', '', 'Page 5', 4, 0, 0, 2600, 2600)")
+        legacyDb.version = 1
+        legacyDb.close()
+
+        val migratedDb = Room.databaseBuilder(context, MyBooksDatabase::class.java, dbFile.absolutePath)
+            .addMigrations(MyBooksDatabase.MIGRATION_1_2)
+            .allowMainThreadQueries()
+            .build()
+
+        try {
+            val books = migratedDb.libraryDao().getActiveBooksSnapshot().associateBy { it.id }
+            assertEquals(3, books.size)
+            assertEquals(ReadingStatus.WANT_TO_READ.name, books["b-want"]?.readingStatusName)
+            assertEquals(ReadingStatus.CURRENTLY_READING.name, books["b-read"]?.readingStatusName)
+            assertEquals(ReadingStatus.FINISHED.name, books["b-done"]?.readingStatusName)
+            assertFalse(books["b-read"]!!.isDeleted)
+
+            val notes = migratedDb.annotationDao().getAllNotesSnapshot()
+            assertEquals(1, notes.size)
+            assertEquals("My v1 note body", notes[0].content)
+
+            migratedDb.libraryDao().insertReadingSession(
+                ReadingSessionEntity(
+                    id = "s-1",
+                    bookId = "b-read",
+                    bookTitleSnapshot = "Reading Book",
+                    epochDay = LibraryRepository.localEpochDay(),
+                    durationSeconds = 600,
+                    pagesRead = 10,
+                    startedAtEpochMs = 1000L,
+                    endedAtEpochMs = 2000L,
+                    isFocusTimer = true
+                )
+            )
+            assertEquals(1, migratedDb.libraryDao().getAllReadingSessionsSnapshot().size)
+        } finally {
+            migratedDb.close()
+        }
+    }
+
+    @Test
+    fun `library supports reading status, soft delete trash restore, collection editing, and streak calculation`() = runBlocking {
+        val bookFile = File(tempDir, "status_book.txt").apply { writeText("Paragraphs for reading tests.") }
+        val imported = (libraryRepo.importDocument(Uri.fromFile(bookFile), takePersistablePermission = false)
+            as com.example.data.repository.ImportOutcome.Imported).book
+
+        libraryRepo.setReadingStatus(imported.id, ReadingStatus.FINISHED)
+        assertEquals(ReadingStatus.FINISHED, libraryRepo.getBookById(imported.id)?.resolvedReadingStatus())
+
+        val col = libraryRepo.createCollection("Favorites Shelf", "Initial desc")
+        assertTrue(libraryRepo.updateCollection(col.id, "Must Reads", "Updated desc"))
+        val updatedCol = libraryRepo.collections.first().first { it.id == col.id }
+        assertEquals("Must Reads", updatedCol.name)
+        assertEquals("Updated desc", updatedCol.description)
+        libraryRepo.deleteCollection(col.id)
+        assertTrue(libraryRepo.collections.first().none { it.id == col.id })
+
+        libraryRepo.softDeleteBook(imported.id)
+        assertTrue(libraryRepo.allBooksWithDetails.first().none { it.book.id == imported.id })
+        assertTrue(libraryRepo.deletedBooksWithDetails.first().any { it.book.id == imported.id })
+
+        libraryRepo.restoreBookFromTrash(imported.id)
+        assertTrue(libraryRepo.allBooksWithDetails.first().any { it.book.id == imported.id })
+        assertTrue(libraryRepo.deletedBooksWithDetails.first().none { it.book.id == imported.id })
+
+        val now = 1_780_000_000_000L
+        val today = LibraryRepository.localEpochDay(now)
+        val sessions = listOf(
+            ReadingSessionEntity("s1", imported.id, imported.title, today - 2, 900, 12, now - 172_800_000L, now - 172_000_000L, false),
+            ReadingSessionEntity("s2", imported.id, imported.title, today - 1, 1200, 15, now - 86_400_000L, now - 85_200_000L, true),
+            ReadingSessionEntity("s3", imported.id, imported.title, today, 600, 8, now - 600_000L, now, false)
+        )
+        val streak = LibraryRepository.calculateStreakSummary(sessions, dailyGoalMinutes = 15, nowEpochMs = now)
+        assertEquals(10, streak.todayMinutes)
+        assertEquals(45, streak.totalMinutes)
+        assertEquals(3, streak.currentStreakDays)
+        assertEquals(3, streak.bestStreakDays)
+    }
+
+    @Test
+    fun `pdf text extractor extracts text from embedded content stream`() {
+        val minimalPdf = """
+            %PDF-1.4
+            1 0 obj
+            << /Length 49 >>
+            stream
+            BT /F1 12 Tf 72 720 Td (Hello MyBooks Reader!) Tj ET
+            endstream
+            endobj
+        """.trimIndent().toByteArray(Charsets.ISO_8859_1)
+
+        val extracted = PdfTextExtractor.extractTextFromBytes(minimalPdf)
+        assertTrue("Expected extracted PDF text, got: $extracted", extracted.contains("Hello MyBooks Reader!"))
+    }
+
+    @Test
+    fun `backup manager restores v1 backup json payload without v2 columns cleanly`() = runBlocking {
+        val v1LibraryJson = """
+            {
+              "schemaVersion": 1,
+              "books": [
+                {
+                  "id": "v1-book-1",
+                  "title": "Legacy Book",
+                  "author": "Omor",
+                  "originalFilename": "legacy.txt",
+                  "formatName": "TXT",
+                  "fileUri": "file:///tmp/legacy.txt",
+                  "fileSizeBytes": 120,
+                  "contentHash": "hash-legacy-v1",
+                  "readingProgress": 0.55
+                }
+              ],
+              "preferences": {
+                "appLanguage": "bn",
+                "readerFontSizeSp": 20.0
+              }
+            }
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
+        val digest = MessageDigest.getInstance("SHA-256").digest(v1LibraryJson)
+            .joinToString("") { "%02x".format(it) }
+        val v1ManifestJson = """
+            {
+              "schemaVersion": 1,
+              "appId": "com.mybooks.omor.dev",
+              "createdAtEpochMs": 1700000000000,
+              "mode": "METADATA_ONLY",
+              "bookCount": 1,
+              "bookmarkCount": 0,
+              "noteCount": 0,
+              "highlightCount": 0,
+              "sha256Checksums": {
+                "library_data.json": "$digest"
+              }
+            }
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
+        val v1Zip = File(tempDir, "legacy_v1_backup.zip")
+        ZipOutputStream(FileOutputStream(v1Zip)).use { zos ->
+            zos.putNextEntry(ZipEntry("library_data.json"))
+            zos.write(v1LibraryJson)
+            zos.closeEntry()
+            zos.putNextEntry(ZipEntry("manifest.json"))
+            zos.write(v1ManifestJson)
+            zos.closeEntry()
+        }
+
+        val soundManager = PageTurnSoundManager(context, prefsRepo)
+        val backupManager = BackupManager(context, db, prefsRepo) { soundManager.soundFile() }
+
+        val inspected = backupManager.inspectAndValidateBackup(Uri.fromFile(v1Zip))
+        assertTrue(inspected.isSuccess)
+        val restore = backupManager.applyRestore(inspected.getOrThrow(), DuplicatePolicy.OVERWRITE_MATCHES)
+        assertTrue(restore.isSuccess)
+
+        val restoredBook = libraryRepo.getBookById("v1-book-1")
+        assertNotNull(restoredBook)
+        assertEquals(ReadingStatus.CURRENTLY_READING, restoredBook!!.resolvedReadingStatus())
+        assertFalse(restoredBook.isDeleted)
+        soundManager.release()
+    }
+
+    @Test
+    fun `app enforces exclusions and keeps default language bn`() = runBlocking {
+        val freshStore = PreferenceDataStoreFactory.create(
+            scope = this,
+            produceFile = { File(tempDir, "fresh_default_prefs.preferences_pb") }
+        )
+        val freshRepo = UserPreferencesRepository(freshStore)
+        assertEquals("bn", freshRepo.preferencesFlow.first().appLanguage)
+        assertFalse(context.resources.getString(R.string.app_name).contains("Lock", ignoreCase = true))
+        val pinResId = context.resources.getIdentifier("pin_lock", "string", context.packageName)
+        val bioResId = context.resources.getIdentifier("biometric_lock", "string", context.packageName)
+        assertEquals(0, pinResId)
+        assertEquals(0, bioResId)
     }
 }

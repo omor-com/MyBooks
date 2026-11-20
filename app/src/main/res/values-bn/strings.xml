@@ -136,6 +136,41 @@
     <string name="reader_select_file_again">ফাইল আবার নির্বাচন করুন</string>
     <string name="reader_add_to_library">MyBooks লাইব্রেরিতে যুক্ত করুন</string>
     <string name="reader_add_to_library_short">লাইব্রেরিতে রাখুন</string>
+    <string name="reader_goto_page_title">নির্দিষ্ট পৃষ্ঠা / অধ্যায়ে যান</string>
+    <string name="reader_goto_page_hint">সংখ্যা লিখুন (১–%1$d)</string>
+    <string name="reader_goto_action">যান</string>
+    <string name="reader_pdf_scroll_mode">PDF লেআউট</string>
+    <string name="reader_pdf_single_page">একক পৃষ্ঠা</string>
+    <string name="reader_pdf_continuous">লম্বালম্বি স্ক্রল</string>
+    <string name="reader_reflow_mode">পৃষ্ঠা উল্টানোর ধরন</string>
+    <string name="reader_reflow_paginated">ট্যাপ-পেজ মোড</string>
+    <string name="reader_reflow_continuous">নিরবচ্ছিন্ন স্ক্রল</string>
+    <string name="reader_tap_zones">ট্যাপ জোন</string>
+    <string name="reader_tap_standard">স্ট্যান্ডার্ড</string>
+    <string name="reader_tap_left_handed">বাঁ-হাতি</string>
+    <string name="reader_tap_center_only">শুধু মাঝে ট্যাপ</string>
+    <string name="reader_tap_off">বন্ধ</string>
+    <string name="reader_reduced_animation">কম অ্যানিমেশন</string>
+    <string name="reader_profiles_title">দ্রুত প্রোফাইল</string>
+    <string name="reader_profile_comfortable">আরামদায়ক</string>
+    <string name="reader_profile_night">রাতের পড়া</string>
+    <string name="reader_profile_study">স্টাডি</string>
+    <string name="reader_read_aloud">শুনে পড়ুন (TTS)</string>
+    <string name="reader_tts_pause">বিরতি</string>
+    <string name="reader_tts_resume">চালু করুন</string>
+    <string name="reader_tts_stop">বন্ধ করুন</string>
+    <string name="reader_tts_chunk_progress">অংশ %1$d / %2$d</string>
+    <string name="reader_tts_no_pdf_text">এই পৃষ্ঠায় টেক্সট লেয়ার পাওয়া যায়নি। স্ক্যান করা পৃষ্ঠা শুনতে প্রথমে অফলাইন OCR চালান।</string>
+    <string name="reader_ocr_action">অফলাইন OCR</string>
+    <string name="reader_ocr_title">অফলাইন পৃষ্ঠা OCR</string>
+    <string name="reader_ocr_scan_page">বর্তমান পৃষ্ঠা স্ক্যান</string>
+    <string name="reader_ocr_scan_book">সর্বোচ্চ ২০ পৃষ্ঠা স্ক্যান</string>
+    <string name="reader_ocr_scanning">পৃষ্ঠা %1$d স্ক্যান হচ্ছে…</string>
+    <string name="reader_ocr_disclaimer">এটি ML Kit লাতিন OCR ব্যবহার করে সম্পূর্ণ অফলাইনে চলে। ইংরেজি/লাতিন মুদ্রিত স্ক্যানের জন্য কার্যকর; অস্পষ্ট স্ক্যান বা বাংলা লিপিতে নির্ভুলতা সীমিত।</string>
+    <string name="reader_ocr_empty">এখনও কোনো টেক্সট পাওয়া যায়নি। অনুসন্ধান বা শুনে পড়ার জন্য বর্তমান পৃষ্ঠা স্ক্যান করুন।</string>
+    <string name="reader_highlight_color">হাইলাইট রঙ</string>
+    <string name="reader_prev_chapter">পূর্ববর্তী অধ্যায়</string>
+    <string name="reader_next_chapter">পরবর্তী অধ্যায়</string>
 
     <!-- Bookmarks & Notes -->
     <string name="bookmarks_title">বুকমার্ক ও নোট</string>
@@ -317,4 +352,95 @@
     <string name="restore_success">রিস্টোর সম্পন্ন: %1$dটি বই, %2$dটি বুকমার্ক, %3$dটি নোট প্রক্রিয়াকৃত।</string>
     <string name="restore_invalid_archive">ত্রুটিপূর্ণ বা অনিরাপদ ব্যাকআপ আর্কাইভ। বর্তমান তথ্য অপরিবর্তিত আছে।</string>
     <string name="backup_community_note">বিঃদ্রঃ: অনলাইন কমিউনিটি পোস্ট ও অ্যাকাউন্ট তথ্য স্থানীয় ব্যাকআপে অন্তর্ভুক্ত থাকে না।</string>
+
+    <!-- Reminders & Notifications -->
+    <string name="reminder_notification_body">MyBooks-এ আপনার প্রতিদিনের পড়ার সময় হয়েছে।</string>
+    <string name="reminder_channel_name">দৈনিক পড়ার রিমাইন্ডার</string>
+    <string name="reminder_channel_desc">পড়া চালিয়ে যাওয়ার জন্য নির্ধারিত দৈনিক রিমাইন্ডার।</string>
+
+    <!-- Stage 4 Home Productivity -->
+    <string name="home_streak_days">%1$d দিনের ধারাবাহিকতা</string>
+    <string name="home_streak_best">সেরা: %1$d দিন</string>
+    <string name="home_daily_goal_title">আজকের পড়ার লক্ষ্য</string>
+    <string name="home_daily_goal_progress">%1$d / %2$d মিনিট</string>
+    <string name="home_focus_timer_title">ফোকাস রিডিং টাইমার</string>
+    <string name="home_focus_timer_start">শুরু করুন</string>
+    <string name="home_focus_timer_pause">বিরতি</string>
+    <string name="home_focus_timer_resume">চালু</string>
+    <string name="home_focus_timer_stop">শেষ ও সংরক্ষণ</string>
+    <string name="home_est_minutes_left">আনুমানিক ~%1$d মিনিট বাকি</string>
+    <string name="home_break_alert_title">একটু বিরতি নিন</string>
+    <string name="home_break_alert_message">আপনি একটানা অনেকক্ষণ ধরে পড়ছেন। চোখের বিশ্রামের জন্য একটু বিরতি নিন।</string>
+    <string name="home_break_dismiss">ঠিক আছে</string>
+
+    <!-- Stage 4 Library Upgrades -->
+    <string name="library_status_all">সব অবস্থা</string>
+    <string name="library_status_want_to_read">পড়তে চাই</string>
+    <string name="library_status_currently_reading">পড়ছি</string>
+    <string name="library_status_finished">সমাপ্ত</string>
+    <string name="library_smart_unread">অপঠিত</string>
+    <string name="library_smart_recently_opened">সাম্প্রতিক খোলা</string>
+    <string name="library_smart_recently_added">নতুন যুক্ত</string>
+    <string name="library_smart_annotated">নোটসহ</string>
+    <string name="library_search_history_title">সাম্প্রতিক অনুসন্ধান</string>
+    <string name="library_search_inside_books">বইয়ের ভেতরের লেখা খুঁজুন</string>
+    <string name="library_search_inside_running">ডকুমেন্টের ভেতর খোঁজা হচ্ছে…</string>
+    <string name="library_search_inside_no_hits">বইগুলোর ভেতরে মিল খুঁজে পাওয়া যায়নি।</string>
+    <string name="library_trash_title">সম্প্রতি মোছা হয়েছে</string>
+    <string name="library_trash_empty">ট্র্যাশ খালি রয়েছে</string>
+    <string name="library_trash_restore">ফিরিয়ে আনুন</string>
+    <string name="library_trash_delete_forever">স্থায়ীভাবে মুছুন</string>
+    <string name="library_move_to_trash">ট্র্যাশে সরান</string>
+    <string name="library_moved_to_trash">সম্প্রতি মোছা তালিকায় পাঠানো হয়েছে</string>
+    <string name="library_restored_from_trash">বইটি লাইব্রেরিতে ফিরিয়ে আনা হয়েছে</string>
+    <string name="library_reassign_category_label">মোছার আগে বই অন্য বিভাগে নিন</string>
+    <string name="library_reassign_uncategorized">সাধারণ (বিভাগহীন)</string>
+    <string name="library_manage_collections_title">সংগ্রহ পরিচালনা</string>
+    <string name="library_edit_collection">সংগ্রহ সম্পাদনা</string>
+    <string name="library_collection_desc_hint">বিবরণ (ঐচ্ছিক)</string>
+    <string name="library_no_collections">এখনও কোনো সংগ্রহ নেই</string>
+    <string name="library_set_reading_status">পড়ার অবস্থা</string>
+
+    <!-- Stage 4 Bookmarks Export -->
+    <string name="bookmarks_export_button">এক্সপোর্ট</string>
+    <string name="bookmarks_export_md">Markdown (.md) হিসেবে সংরক্ষণ</string>
+    <string name="bookmarks_export_json">JSON (.json) হিসেবে সংরক্ষণ</string>
+    <string name="bookmarks_export_success">%1$dটি আইটেম সফলভাবে এক্সপোর্ট হয়েছে</string>
+    <string name="bookmarks_export_failed">এক্সপোর্ট ব্যর্থ হয়েছে</string>
+
+    <!-- Stage 4 Settings Productivity & Breakdown -->
+    <string name="settings_section_productivity">পড়ার লক্ষ্য ও টাইমার</string>
+    <string name="settings_daily_goal_label">দৈনিক লক্ষ্য (মিনিট)</string>
+    <string name="settings_reading_speed_wpm">পড়ার গতি (%1$d WPM)</string>
+    <string name="settings_streak_summary">বর্তমান: %1$d দিন • সেরা: %2$d দিন • মোট: %3$d মিনিট</string>
+    <string name="settings_14_day_calendar">গত ১৪ দিনের পাঠ কার্যক্রম</string>
+    <string name="settings_recent_sessions">সাম্প্রতিক পাঠ সেশন</string>
+    <string name="settings_no_sessions">এখনও কোনো পাঠ সেশন সংরক্ষিত হয়নি।</string>
+    <string name="settings_break_reminder">বিরতি সতর্কতা</string>
+    <string name="settings_break_off">বন্ধ</string>
+    <string name="settings_break_minutes">%1$d মিনিট</string>
+    <string name="settings_daily_reminder">দৈনিক পড়ার রিমাইন্ডার</string>
+    <string name="settings_reminder_time">রিমাইন্ডার সময়: %1$02d:%2$02d</string>
+    <string name="settings_notification_denied">নোটিফিকেশন অনুমতি দেওয়া হয়নি। রিমাইন্ডার বন্ধ রয়েছে।</string>
+    <string name="settings_redownload_sound">আবার ডাউনলোড করুন</string>
+    <string name="settings_storage_breakdown_books">অভ্যন্তরীণ বই: %1$s</string>
+    <string name="settings_storage_breakdown_covers">কভার ছবি: %1$s</string>
+    <string name="settings_storage_breakdown_audio">অডিও ফাইল: %1$s</string>
+    <string name="settings_last_backup_none">এখনও কোনো স্থানীয় ব্যাকআপ তৈরি হয়নি।</string>
+    <string name="settings_last_backup_at">সর্বশেষ ব্যাকআপ: %1$s (%2$s)</string>
+    <string name="settings_privacy_dashboard">গোপনীয়তার বিস্তারিত দেখুন</string>
+    <string name="settings_privacy_dialog_title">গোপনীয়তা ও লোকাল-ফার্স্ট নিশ্চয়তা</string>
+    <string name="settings_privacy_dialog_body">MyBooks আপনার বই, কভার, অগ্রগতি, বুকমার্ক, নোট, হাইলাইট এবং পাঠের সময় শুধুমাত্র আপনার ডিভাইসে সংরক্ষণ করে। স্থানীয় বই পড়তে কোনো অ্যাকাউন্ট বা পিন/বায়োমেট্রিক লকের প্রয়োজন নেই। কমিউনিটি সম্পূর্ণ ঐচ্ছিক এবং Google দিয়ে সাইন ইন করলেই কেবল Firebase-এ যুক্ত হয়।</string>
+
+    <!-- Stage 5 Community -->
+    <string name="community_like_action">পছন্দ</string>
+    <string name="community_search_hint">পোস্ট বা সদস্য খুঁজুন</string>
+    <string name="community_block_user">ব্যবহারকারীকে ব্লক করুন</string>
+    <string name="community_unblock_user">আনব্লক করুন</string>
+    <string name="community_blocked_users_title">ব্লক করা ব্যবহারকারী</string>
+    <string name="community_blocked_users_empty">আপনি এখনও কাউকে ব্লক করেননি।</string>
+    <string name="community_block_confirm">%1$s-কে ব্লক করবেন? তার কোনো পোস্ট বা মন্তব্য আর দেখতে পাবেন না।</string>
+    <string name="community_user_blocked">ব্যবহারকারীকে ব্লক করা হয়েছে।</string>
+    <string name="community_user_unblocked">ব্যবহারকারীকে আনব্লক করা হয়েছে।</string>
+    <string name="community_search_no_results">কোনো পোস্ট বা সদস্য খুঁজে পাওয়া যায়নি।</string>
 </resources>

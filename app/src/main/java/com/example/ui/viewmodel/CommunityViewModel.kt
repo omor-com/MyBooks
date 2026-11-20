@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.community.AccountStatus
+import com.example.data.community.BlockedUserEntry
 import com.example.data.community.CommunityComment
 import com.example.data.community.CommunityLinkValidator
 import com.example.data.community.CommunityPost
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -58,6 +60,12 @@ class CommunityViewModel(
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _likedPostIds = MutableStateFlow<Set<String>>(emptySet())
+    val likedPostIds: StateFlow<Set<String>> = _likedPostIds.asStateFlow()
+
     private val _events = MutableSharedFlow<CommunityEvent>(extraBufferCapacity = 8)
     val events = _events.asSharedFlow()
 
@@ -72,11 +80,30 @@ class CommunityViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), null)
 
-    val feedState: StateFlow<UiState<List<CommunityPost>>> = combine(_pageLimit, _retryTrigger) { limit, _ ->
+    val blockedUsersState: StateFlow<List<BlockedUserEntry>> = repository.observeBlockedUsers()
+        .catch { error ->
+            val fsError = generateSequence(error) { it.cause }
+                .filterIsInstance<FirebaseFirestoreException>()
+                .firstOrNull()
+            if (fsError == null && error is CancellationException) throw error
+            Log.w(TAG, "Error observing blocked users", fsError ?: error)
+            emit(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    private val rawFeedState: StateFlow<UiState<List<CommunityPost>>> = combine(_pageLimit, _retryTrigger) { limit, _ ->
         limit
     }
         .flatMapLatest { limit ->
             repository.observeVisibleFeed(limit)
+                .onEach { posts ->
+                    val ids = posts.map { it.id }
+                    viewModelScope.launch {
+                        repository.fetchLikedPostIds(ids).onSuccess { liked ->
+                            _likedPostIds.value = liked
+                        }
+                    }
+                }
                 .map<List<CommunityPost>, UiState<List<CommunityPost>>> { UiState.Success(it) }
                 .catch { error ->
                     val fsError = generateSequence(error) { it.cause }
@@ -89,6 +116,29 @@ class CommunityViewModel(
                 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
+
+    val feedState: StateFlow<UiState<List<CommunityPost>>> = combine(
+        rawFeedState,
+        blockedUsersState,
+        _searchQuery
+    ) { state, blockedUsers, query ->
+        when (state) {
+            is UiState.Success -> {
+                val blockedUids = blockedUsers.map { it.blockedUid }.toSet()
+                val cleanQuery = query.trim().lowercase()
+                val filtered = state.data.filter { post ->
+                    post.authorUid !in blockedUids && (
+                        cleanQuery.isEmpty() ||
+                            post.content.lowercase().contains(cleanQuery) ||
+                            post.authorName.lowercase().contains(cleanQuery) ||
+                            post.bookTitle.lowercase().contains(cleanQuery)
+                        )
+                }
+                UiState.Success(filtered)
+            }
+            else -> state
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
 
     val activePostCommentsState: StateFlow<UiState<List<CommunityComment>>> = combine(
         _activePostIdForComments,
@@ -109,6 +159,15 @@ class CommunityViewModel(
                         Log.w(TAG, "Error observing comments for $postId", root)
                         emit(UiState.Error(formatFriendlyCommunityError(root)))
                     }
+            }
+        }
+        .combine(blockedUsersState) { state, blockedUsers ->
+            when (state) {
+                is UiState.Success -> {
+                    val blockedUids = blockedUsers.map { it.blockedUid }.toSet()
+                    UiState.Success(state.data.filter { it.authorUid !in blockedUids })
+                }
+                else -> state
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UiState.Loading)
@@ -243,6 +302,46 @@ class CommunityViewModel(
             }.onFailure { err ->
                 _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(err)))
             }
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun togglePostLike(postId: String) {
+        val currentLiked = _likedPostIds.value
+        val wasLiked = postId in currentLiked
+        _likedPostIds.value = if (wasLiked) currentLiked - postId else currentLiked + postId
+        viewModelScope.launch {
+            repository.togglePostLike(postId)
+                .onSuccess { nowLiked ->
+                    val latest = _likedPostIds.value
+                    _likedPostIds.value = if (nowLiked) latest + postId else latest - postId
+                }
+                .onFailure { err ->
+                    // Revert optimistic state
+                    val latest = _likedPostIds.value
+                    _likedPostIds.value = if (wasLiked) latest + postId else latest - postId
+                    _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(err)))
+                }
+        }
+    }
+
+    fun blockUser(blockedUid: String, displayName: String, photoUrl: String) {
+        if (blockedUid.isBlank() || blockedUid == currentUserId) return
+        viewModelScope.launch {
+            repository.blockUser(blockedUid, displayName, photoUrl)
+                .onSuccess { _events.emit(CommunityEvent.Message("User blocked")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
+        }
+    }
+
+    fun unblockUser(blockedUid: String) {
+        viewModelScope.launch {
+            repository.unblockUser(blockedUid)
+                .onSuccess { _events.emit(CommunityEvent.Message("User unblocked")) }
+                .onFailure { _events.emit(CommunityEvent.Message(formatFriendlyCommunityError(it))) }
         }
     }
 

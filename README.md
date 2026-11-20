@@ -12,7 +12,7 @@
 
 | Tier | Formats | Support Details | Limitations |
 | :--- | :--- | :--- | :--- |
-| **Core** | **PDF**, **EPUB**, **TXT**, **HTML**, **Markdown (`.md`)** | PDF rendered natively via Android `PdfRenderer` with pinch-to-zoom and page slider. EPUB parsed offline into reflowable chapters, TOC, cover art, metadata, and search. HTML/Markdown/TXT rendered safely with sanitized text extraction. | Password-protected or DRM-encrypted PDFs/EPUBs cannot be unlocked. Scanned image-only PDFs display as pages (no built-in OCR). |
+| **Core** | **PDF**, **EPUB**, **TXT**, **HTML**, **Markdown (`.md`)** | PDF rendered natively via Android `PdfRenderer` with pinch-to-zoom, single-page or continuous vertical scroll, embedded text search (`PdfTextExtractor`), and **offline ML Kit Latin OCR** (`OfflineOcrHelper`) for scanned pages. EPUB parsed offline into reflowable chapters, TOC, cover art, metadata, and search. HTML/Markdown/TXT rendered safely with sanitized text extraction and optional **offline TTS Read Aloud** (`TtsReadAloudManager`). | Password-protected or DRM-encrypted PDFs/EPUBs cannot be unlocked offline. Offline OCR uses on-device ML Kit Latin recognition. |
 | **Extended** | **DOCX**, **RTF**, **ODT**, **FB2**, **DOC** (detected) | DOCX (`word/document.xml`), ODT (`content.xml`), FB2 XML, and RTF control-word decoding are parsed directly offline. | Legacy binary Word 97–2003 (`.doc`) cannot be converted offline; MyBooks detects it safely and recommends converting to `.docx` or `.pdf`. |
 | **Specialized** | **CBZ**, **MOBI**, **AZW3**, **XPS**, **CBR** (detected) | CBZ image archives open page-by-page with zoom. Uncompressed & PalmDOC-LZ77 DRM-free MOBI/AZW3 and XPS `.fpage` glyphs extract cleanly. | Proprietary RAR (`.cbr`), HUFF/CDIC compressed MOBI, and DRM-encrypted Kindle files are rejected cleanly with clear user guidance. |
 | **Images** | **JPG**, **JPEG**, **PNG**, **WEBP**, **TIFF** | Displayed in zoomable reader canvas and selectable as custom book covers via zero-permission Android Photo Picker. | — |
@@ -22,11 +22,13 @@
 ## Architecture & Core Features
 
 - **5 Top-Level Tabs**: `Home`, `My Library`, `Bookmarks & Notes`, `Community`, `Settings`
-- **Backup & Restore (Inside Settings Only)**: Creates integrity-checked `.zip` archives (`manifest.json` + SHA-256 checksums + `library_data.json` + covers/sound/files) supporting Metadata-Only, Selected Books, and Full Library modes, plus path-traversal validation and Duplicate Handling (`Skip`, `Keep Both`, `Update Matches`).
-- **Offline Page-Turn Sound**: Optionally downloads `bookreader-page-flip.mp3`, verifies MP3 frame integrity, and plays offline via `SoundPool` on discrete page/chapter turns.
+- **Reader Enhancements**: Comfortable / Night / Study profiles, tap-zone presets (Standard, Left-Handed, Center, Off), paginated vs. continuous scroll modes, live **Focus Timer** with break reminders, **Offline TTS Read Aloud** with speed controls, and **Offline OCR** text copy & highlight on PDF/image pages.
+- **Library Productivity & Safety**: Reading Status tracking (`Want to Read`, `Currently Reading`, `Finished`), Collection edit/delete, **Soft-Delete Trash** with restore or permanent purge, Reading Goals & Streak tracking, full-text library search + history, and Markdown (`.md`) / JSON annotation exports.
+- **Backup & Restore (Inside Settings Only)**: Creates integrity-checked `.zip` v2 archives (`manifest.json` + SHA-256 checksums + `library_data.json` + reading sessions + covers/sound/files) supporting backward-compatible v1 restore, Metadata-Only / Selected Books / Full Library modes, path-traversal validation, and Duplicate Handling (`Skip`, `Keep Both`, `Update Matches`).
+- **Offline Page-Turn Sound**: Optionally downloads `bookreader-page-flip.mp3`, verifies MP3 frame integrity, and plays offline via `SoundPool` on discrete page/chapter turns (with re-download/repair support).
 - **Community & Moderation**:
   - Gated **strictly inside the Community tab** using Android `CredentialManager` (`GetSignInWithGoogleOption` / `GetGoogleIdOption`).
-  - Supports text + emoji posts, optional validated Google Drive links (`https://drive.google.com/...` or `https://docs.google.com/...`) with sharing disclaimer, Report Post & Report Profile, and bilingual Community Rules.
+  - Supports text + emoji posts, post likes (`likeCount` backed by Firestore transactions), real-time post/author/book search, user blocking (`blocked_users` + Manage Blocked Users dialog), optional validated Google Drive links (`https://drive.google.com/...` or `https://docs.google.com/...`) with sharing disclaimer, Report Post & Report Profile, and bilingual Community Rules.
   - Protected official administrator account (`muhammedomor.dev@gmail.com`) receives the red admin badge (`#BD081C`) and accesses **Admin Moderation** (review/dismiss reports, hide/restore posts, grant/revoke blue verified badges `#26A5E4`, restrict/unrestrict accounts, view immutable audit logs).
 
 ---
@@ -34,7 +36,7 @@
 ## Firebase & Cloud Functions Setup
 
 1. Firestore project & named database are configured in `app/google-services.json`, `app/src/main/res/values/firebase_applet_config.xml`, `firestore.rules`, and `firestore.indexes.json`.
-2. Deploy composite index & rules when updating backend configuration:
+2. Deploy composite indexes & security rules when updating backend configuration, and verify with the emulator test suite (`firestore.test.js`):
    ```bash
    firebase deploy --only firestore:rules,firestore:indexes
    ```

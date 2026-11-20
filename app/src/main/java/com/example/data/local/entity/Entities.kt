@@ -42,6 +42,12 @@ data class CollectionEntity(
     val createdAtEpochMs: Long = System.currentTimeMillis()
 )
 
+enum class ReadingStatus {
+    WANT_TO_READ,
+    CURRENTLY_READING,
+    FINISHED
+}
+
 @Serializable
 @Entity(
     tableName = "books",
@@ -79,8 +85,20 @@ data class BookEntity(
     val lastOpenedEpochMs: Long = 0L,
     val isFavorite: Boolean = false,
     val isFileMissing: Boolean = false,
-    val updatedAtEpochMs: Long = System.currentTimeMillis()
+    val updatedAtEpochMs: Long = System.currentTimeMillis(),
+    val readingStatusName: String = ReadingStatus.WANT_TO_READ.name,
+    val isDeleted: Boolean = false,
+    val deletedAtEpochMs: Long? = null,
+    val estimatedTotalMinutes: Int = 0
 )
+
+fun BookEntity.resolvedReadingStatus(): ReadingStatus =
+    enumValues<ReadingStatus>().firstOrNull { it.name == readingStatusName }
+        ?: when {
+            readingProgress >= 0.99f -> ReadingStatus.FINISHED
+            readingProgress > 0f -> ReadingStatus.CURRENTLY_READING
+            else -> ReadingStatus.WANT_TO_READ
+        }
 
 @Serializable
 @Entity(
@@ -193,6 +211,35 @@ data class NoteEntity(
     val scrollOffset: Int = 0,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
     val updatedAtEpochMs: Long = System.currentTimeMillis()
+)
+
+@Serializable
+@Entity(
+    tableName = "reading_sessions",
+    foreignKeys = [
+        ForeignKey(
+            entity = BookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["bookId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [
+        Index(value = ["bookId"]),
+        Index(value = ["epochDay"]),
+        Index(value = ["startedAtEpochMs"])
+    ]
+)
+data class ReadingSessionEntity(
+    @PrimaryKey val id: String,
+    val bookId: String? = null,
+    val bookTitleSnapshot: String = "",
+    val epochDay: Long,
+    val durationSeconds: Int,
+    val pagesRead: Int = 0,
+    val startedAtEpochMs: Long,
+    val endedAtEpochMs: Long,
+    val isFocusTimer: Boolean = false
 )
 
 data class BookWithDetails(

@@ -131,7 +131,10 @@ fun MyBooksApp(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return LibraryViewModel(container.libraryRepository) as T
+                return LibraryViewModel(
+                    repository = container.libraryRepository,
+                    preferencesRepository = container.preferencesRepository
+                ) as T
             }
         }
     )
@@ -151,6 +154,7 @@ fun MyBooksApp(
 
     val libraryState by libraryViewModel.uiState.collectAsStateWithLifecycle()
     val prefs by settingsViewModel.preferences.collectAsStateWithLifecycle()
+    val focusTimerState by settingsViewModel.focusTimerState.collectAsStateWithLifecycle()
 
     val baseContext = LocalContext.current
     val activityRegistryOwner = LocalActivityResultRegistryOwner.current
@@ -212,7 +216,13 @@ fun MyBooksApp(
                 libraryViewModel.events.collect { event ->
                     when (event) {
                         is LibraryEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
-                        is LibraryEvent.OpenBook -> navController.navigate(ReaderRoute(bookId = event.bookId))
+                        is LibraryEvent.OpenBook -> navController.navigate(
+                            ReaderRoute(
+                                bookId = event.bookId,
+                                pageIndex = event.pageIndex,
+                                chapterIndex = event.chapterIndex
+                            )
+                        )
                     }
                 }
             }
@@ -306,7 +316,7 @@ fun MyBooksApp(
                             }
                         }
 
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                             NavHost(
                                 navController = navController,
                                 startDestination = HomeRoute
@@ -314,6 +324,7 @@ fun MyBooksApp(
                                 composable<HomeRoute> {
                                     HomeScreen(
                                         state = libraryState,
+                                        focusTimerState = focusTimerState,
                                         onImportClick = { importLauncher.launch(DocumentFormat.safPickerMimeTypes) },
                                         onOpenBook = { bookId ->
                                             navController.navigate(ReaderRoute(bookId = bookId))
@@ -326,7 +337,12 @@ fun MyBooksApp(
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
-                                        }
+                                        },
+                                        onStartFocusTimer = settingsViewModel::startFocusTimer,
+                                        onPauseFocusTimer = settingsViewModel::pauseFocusTimer,
+                                        onResumeFocusTimer = settingsViewModel::resumeFocusTimer,
+                                        onStopFocusTimer = settingsViewModel::stopAndSaveFocusTimer,
+                                        onDismissBreakAlert = settingsViewModel::dismissBreakAlert
                                     )
                                 }
 
@@ -334,6 +350,18 @@ fun MyBooksApp(
                                     LibraryScreen(
                                         state = libraryState,
                                         onSearchChange = libraryViewModel::setSearchQuery,
+                                        onSubmitSearch = libraryViewModel::submitSearchQuery,
+                                        onToggleSearchInsideBooks = libraryViewModel::toggleSearchInsideBooks,
+                                        onClearSearchHistory = libraryViewModel::clearSearchHistory,
+                                        onOpenBookAtLocation = { bookId, pageIndex, chapterIndex ->
+                                            navController.navigate(
+                                                ReaderRoute(
+                                                    bookId = bookId,
+                                                    pageIndex = pageIndex,
+                                                    chapterIndex = chapterIndex
+                                                )
+                                            )
+                                        },
                                         onToggleGridView = libraryViewModel::toggleGridView,
                                         onSelectFilterChip = libraryViewModel::setFilterChip,
                                         onSelectCategory = libraryViewModel::selectCategory,
@@ -345,6 +373,7 @@ fun MyBooksApp(
                                             navController.navigate(ReaderRoute(bookId = bookId))
                                         },
                                         onToggleFavorite = { item -> libraryViewModel.toggleFavorite(item.book) },
+                                        onSetReadingStatus = libraryViewModel::setReadingStatus,
                                         onRelocateFile = libraryViewModel::relocateBookFile,
                                         onUpdateMetadata = libraryViewModel::updateBookMetadata,
                                         onSetBookCover = libraryViewModel::setBookCover,
@@ -353,7 +382,11 @@ fun MyBooksApp(
                                         onRenameCategory = libraryViewModel::renameCategory,
                                         onDeleteCategory = libraryViewModel::deleteCategory,
                                         onCreateCollection = libraryViewModel::createCollection,
-                                        onDeleteBook = libraryViewModel::removeBook,
+                                        onUpdateCollection = libraryViewModel::updateCollection,
+                                        onDeleteCollection = libraryViewModel::deleteCollection,
+                                        onSoftDeleteBook = libraryViewModel::softDeleteBook,
+                                        onRestoreBookFromTrash = libraryViewModel::restoreBookFromTrash,
+                                        onDeleteBookPermanently = libraryViewModel::removeBook,
                                         onDuplicateSkip = libraryViewModel::resolveDuplicateSkip,
                                         onDuplicateKeepBoth = libraryViewModel::resolveDuplicateKeepBoth,
                                         onDuplicateReplaceUri = libraryViewModel::resolveDuplicateReplaceUri
@@ -375,7 +408,8 @@ fun MyBooksApp(
                                         onSaveNote = libraryViewModel::saveStandaloneNote,
                                         onDeleteBookmark = libraryViewModel::deleteBookmark,
                                         onDeleteNote = libraryViewModel::deleteNote,
-                                        onDeleteHighlight = libraryViewModel::deleteHighlight
+                                        onDeleteHighlight = libraryViewModel::deleteHighlight,
+                                        onExportAnnotations = libraryViewModel::exportAnnotations
                                     )
                                 }
 
@@ -419,7 +453,8 @@ fun MyBooksApp(
                                                     initialChapterOverride = route.chapterIndex,
                                                     libraryRepository = container.libraryRepository,
                                                     preferencesRepository = container.preferencesRepository,
-                                                    soundManager = container.pageTurnSoundManager
+                                                    soundManager = container.pageTurnSoundManager,
+                                                    ttsManager = container.ttsReadAloudManager
                                                 ) as T
                                             }
                                         }

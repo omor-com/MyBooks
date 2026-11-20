@@ -81,7 +81,7 @@ service cloud.firestore {
 
     function isValidCommunityPost(data) {
       return data.keys().hasAll(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'visibility', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'driveLink', 'bookTitle', 'visibility', 'moderationNote', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['authorUid', 'authorName', 'authorPhotoUrl', 'authorBadge', 'content', 'driveLink', 'bookTitle', 'likeCount', 'visibility', 'moderationNote', 'createdAt', 'updatedAt']) &&
              data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
              data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
              data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500 &&
@@ -89,10 +89,28 @@ service cloud.firestore {
              data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
              (!('driveLink' in data) || isValidDriveLink(data.driveLink)) &&
              (!('bookTitle' in data) || (data.bookTitle is string && data.bookTitle.size() <= 120)) &&
+             (!('likeCount' in data) || (data.likeCount is int && data.likeCount >= 0)) &&
              data.visibility in ['visible', 'hidden', 'removed'] &&
              (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 300)) &&
              data.createdAt is timestamp && data.createdAt <= request.time &&
              data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidPostReaction(data) {
+      return data.keys().hasAll(['uid', 'createdAt']) &&
+             data.keys().hasOnly(['uid', 'createdAt']) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidBlockedUser(data, expectedBlockedUid) {
+      return data.keys().hasAll(['blockedUid', 'displayName', 'createdAt']) &&
+             data.keys().hasOnly(['blockedUid', 'displayName', 'photoUrl', 'createdAt']) &&
+             data.blockedUid == expectedBlockedUid &&
+             isValidId(data.blockedUid) &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
     }
 
     function isValidCommunityComment(data, expectedPostId) {
@@ -191,6 +209,19 @@ service cloud.firestore {
                        );
 
       allow delete: if false;
+
+      match /blocked_users/{blockedUid} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(blockedUid) && request.auth.uid == userId;
+        allow list: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(blockedUid) &&
+                         request.auth.uid == userId &&
+                         blockedUid != request.auth.uid &&
+                         isValidBlockedUser(incoming(), blockedUid);
+        allow update: if false;
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(blockedUid) && request.auth.uid == userId;
+      }
     }
 
     match /community_posts/{postId} {
@@ -206,6 +237,7 @@ service cloud.firestore {
                        isValidCommunityPost(incoming()) &&
                        incoming().authorUid == request.auth.uid &&
                        incoming().visibility == 'visible' &&
+                       (!('likeCount' in incoming()) || incoming().likeCount == 0) &&
                        !('moderationNote' in incoming()) &&
                        isAuthorNotRestricted(request.auth.uid) &&
                        incoming().authorBadge == getAuthorBadge(request.auth.uid);
@@ -222,18 +254,79 @@ service cloud.firestore {
                            isAuthorNotRestricted(request.auth.uid) &&
                            incoming().authorBadge == existing().authorBadge &&
                            incoming().visibility == existing().visibility &&
+                           (!('likeCount' in incoming()) ? !('likeCount' in existing()) : incoming().likeCount == existing().likeCount) &&
                            (!('moderationNote' in incoming()) ? !('moderationNote' in existing()) : incoming().moderationNote == existing().moderationNote) &&
                            incoming().diff(existing()).affectedKeys().hasOnly(['content', 'driveLink', 'bookTitle', 'updatedAt'])
                          ) ||
                          (
                            isAdmin() &&
+                           (!('likeCount' in incoming()) ? !('likeCount' in existing()) : incoming().likeCount == existing().likeCount) &&
                            incoming().diff(existing()).affectedKeys().hasOnly(['visibility', 'moderationNote', 'updatedAt'])
+                         ) ||
+                         (
+                           existing().visibility == 'visible' &&
+                           isAuthorNotRestricted(request.auth.uid) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['likeCount']) &&
+                           (
+                             (
+                               !exists(/databases/$(database)/documents/community_posts/$(postId)/reactions/$(request.auth.uid)) &&
+                               existsAfter(/databases/$(database)/documents/community_posts/$(postId)/reactions/$(request.auth.uid)) &&
+                               (
+                                 (!('likeCount' in existing()) && incoming().likeCount == 1) ||
+                                 ('likeCount' in existing() && incoming().likeCount == existing().likeCount + 1)
+                               )
+                             ) ||
+                             (
+                               exists(/databases/$(database)/documents/community_posts/$(postId)/reactions/$(request.auth.uid)) &&
+                               !existsAfter(/databases/$(database)/documents/community_posts/$(postId)/reactions/$(request.auth.uid)) &&
+                               'likeCount' in existing() &&
+                               existing().likeCount >= 1 &&
+                               incoming().likeCount == existing().likeCount - 1
+                             )
+                           )
                          )
                        );
 
       allow delete: if isSignedIn() &&
                        isValidId(postId) &&
                        (existing().authorUid == request.auth.uid || isAdmin());
+
+      match /reactions/{reactionUid} {
+        allow get: if isSignedIn() &&
+                      isValidId(postId) &&
+                      isValidId(reactionUid) &&
+                      (request.auth.uid == reactionUid || isAdmin());
+        allow list: if isAdmin();
+        allow create: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(reactionUid) &&
+                         request.auth.uid == reactionUid &&
+                         isValidPostReaction(incoming()) &&
+                         incoming().uid == request.auth.uid &&
+                         exists(/databases/$(database)/documents/community_posts/$(postId)) &&
+                         get(/databases/$(database)/documents/community_posts/$(postId)).data.visibility == 'visible' &&
+                         isAuthorNotRestricted(request.auth.uid) &&
+                         (
+                           ('likeCount' in get(/databases/$(database)/documents/community_posts/$(postId)).data &&
+                            getAfter(/databases/$(database)/documents/community_posts/$(postId)).data.likeCount == get(/databases/$(database)/documents/community_posts/$(postId)).data.likeCount + 1) ||
+                           (!('likeCount' in get(/databases/$(database)/documents/community_posts/$(postId)).data) &&
+                            getAfter(/databases/$(database)/documents/community_posts/$(postId)).data.likeCount == 1)
+                         );
+        allow update: if false;
+        allow delete: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(reactionUid) &&
+                         (
+                           isAdmin() ||
+                           (
+                             request.auth.uid == reactionUid &&
+                             exists(/databases/$(database)/documents/community_posts/$(postId)) &&
+                             'likeCount' in get(/databases/$(database)/documents/community_posts/$(postId)).data &&
+                             get(/databases/$(database)/documents/community_posts/$(postId)).data.likeCount >= 1 &&
+                             getAfter(/databases/$(database)/documents/community_posts/$(postId)).data.likeCount == get(/databases/$(database)/documents/community_posts/$(postId)).data.likeCount - 1
+                           )
+                         );
+      }
 
       match /comments/{commentId} {
         allow get: if isSignedIn() &&

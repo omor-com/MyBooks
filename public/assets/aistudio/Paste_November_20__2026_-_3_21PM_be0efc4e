@@ -1,0 +1,1698 @@
+MYBOOKS — FINAL PRODUCTION-READY ANDROID APP
+
+Complete Existing Project Upgrade, Advanced Book Reader, Personal Library, Firebase Community, Admin Panel, Productivity Tools & GitHub Actions APK Build
+
+You are a senior Android engineer, Kotlin and Jetpack Compose specialist, Firebase and Cloud Firestore architect, Android document-reader developer, security engineer, UI/UX designer, and QA automation engineer.
+
+Your task is to inspect, repair, upgrade, test, and deliver my existing MyBooks Android application as a complete, stable, production-ready application.
+
+This is an upgrade of an existing project. It is NOT a request to create a separate prototype, a static mockup, a demo, or a new application that ignores the existing implementation.
+
+You must work on the actual project source code, preserve all existing working functionality and user data, implement the new requirements below, configure the required backend components, and provide a working GitHub Actions APK build workflow.
+
+Do not return only a plan, tutorial, sample code, mockup, or another blueprint. Implement the actual project wherever the available tools and permissions permit.
+
+If a required external configuration cannot be completed without my account access, implement the code and provide precise instructions for the remaining manual step. Never falsely claim that an untested feature is operational.
+
+---
+
+1. PROJECT IDENTITY AND NON-NEGOTIABLE REQUIREMENTS
+
+Application name: MyBooks
+
+Application ID / Package name:
+
+"com.mybooks.omor.dev"
+
+Existing Firebase project ID:
+
+"android-my-books"
+
+Official administrator email:
+
+"muhammedomor.dev@gmail.com"
+
+Developer's official shop:
+
+"https://muhammedomor.supportkori.shop/"
+
+Support email:
+
+"muhammedomor.studio@gmail.com"
+
+Page-turn sound asset:
+
+"https://muhammedomor-studio.github.io/bookreader/bookreader-page-flip.mp3"
+
+Default Community user profile picture:
+
+"https://pockethostbd.github.io/drive-one/picture/mybookscommunity-userprofilepicture.png"
+
+Official administrator profile picture:
+
+"https://pockethostbd.github.io/drive-one/picture/mybooks%20communityadminprofilepicture.png"
+
+Absolute rules
+
+1. Preserve the existing project and update it in place.
+2. Preserve the existing MyBooks logo, branding, package name, navigation structure, database, user data and working features.
+3. Do not replace the existing application with a generic template.
+4. Do not remove existing features simply to make implementation easier.
+5. Do not clear, reset, overwrite, or recreate the existing local database unnecessarily.
+6. Do not discard existing Firebase configuration or silently switch to a different Firebase project.
+7. Do not introduce fake functionality, sample Community posts presented as real posts, or decorative buttons that do nothing.
+8. Do not use placeholder screens such as “Community Unavailable” as a substitute for implementation.
+9. Do not add PIN Lock or Biometric Lock. These two features are explicitly excluded.
+10. Do not add unnecessary advertisements, subscription gates, mandatory sign-in for local reading, or unrelated features.
+11. Do not claim that all file formats work unless their actual readers have been implemented and tested.
+12. Do not claim the application is production-ready merely because the APK compiles.
+13. Keep personal books, notes, bookmarks and reading progress available offline.
+14. Keep all Backup & Restore controls inside Settings → Backup & Restore.
+15. Keep the Developer Official Shop and Support Email buttons inside Settings.
+16. Implement every feasible requirement in this specification, and document any genuine platform or service limitations.
+
+---
+
+2. FIRST: INSPECT THE EXISTING PROJECT
+
+Before changing code, inspect the complete repository and establish how the existing app works.
+
+Inspect:
+
+- All Kotlin source files.
+- Jetpack Compose screens and navigation.
+- Gradle files and dependency versions.
+- Android manifest and application ID.
+- Existing database schema and migrations.
+- Room entities, DAOs, repositories and ViewModels.
+- Existing document readers and parsing libraries.
+- File import and Android file-opening integration.
+- Local storage and persisted URI permissions.
+- Existing bookmarks, notes, reading positions and categories.
+- Existing Backup & Restore implementation.
+- Existing Firebase configuration.
+- Google Sign-In implementation, if present.
+- Firestore repositories, rules and indexes.
+- Existing profile and badge artwork.
+- Existing logo assets.
+- GitHub Actions workflows.
+- Current application crashes and build errors.
+
+Create a clear inventory of the existing functionality before modifying it.
+
+Preserve existing user data and stable identifiers.
+
+If a database schema needs to change, use safe Room migrations. Do not use destructive database migration options that erase user data.
+
+If a feature already works correctly, improve or integrate it only where necessary. Do not rewrite stable functionality without a technical reason.
+
+Where existing project files are missing, recoverable only through a connected service, or unavailable to the development environment, report the limitation instead of inventing their contents.
+
+---
+
+3. TECHNOLOGY AND ARCHITECTURE
+
+Use the existing compatible architecture wherever practical.
+
+Preferred technology:
+
+- Kotlin.
+- Jetpack Compose.
+- Material 3.
+- AndroidX.
+- Lifecycle-aware state collection.
+- Kotlin Coroutines and Flow.
+- Room / SQLite for local metadata and structured personal data.
+- Android Storage Access Framework for user-selected files.
+- Appropriate maintained document-reading libraries.
+- Firebase Authentication for Google Sign-In.
+- Cloud Firestore for Community data.
+- Cloud Functions or an equivalent trusted backend for privileged administrative operations where required.
+- GitHub Actions for automated build and testing.
+
+Use clear separation between UI, ViewModels, repositories, storage, readers, authentication, Community and administrative services.
+
+Use dependency injection if it fits the existing project and improves maintainability.
+
+Do not add unnecessary libraries or depend on abandoned packages without evaluating alternatives.
+
+Pin compatible dependency versions. Avoid introducing conflicting Gradle plugins, Kotlin versions, Android Gradle Plugin versions, Firebase libraries or Java toolchains.
+
+All important operations must run asynchronously where appropriate. Never block the Android main thread with file parsing, image decoding, database operations or network calls.
+
+Use lifecycle-aware collection and proper resource cleanup.
+
+The application must remain responsive on ordinary Android phones with limited memory.
+
+---
+
+4. HOME SCREEN: FIX THE EXISTING LAYOUT
+
+The current Home screen has excessive blank space above the primary content. The supplied screenshot shows the header and Continue Reading card positioned poorly within the available screen area.
+
+Fix the actual cause of the layout problem.
+
+Requirements:
+
+- Remove unnecessary top spacing.
+- Correct excessive padding, spacer elements and oversized containers.
+- Correct status bar, edge-to-edge, WindowInsets and system navigation handling.
+- Position the MyBooks header appropriately below the status bar.
+- Keep Continue Reading visually balanced.
+- Display library statistics naturally.
+- Display Recently Opened and other existing sections correctly.
+- Keep bottom navigation visible without overlapping content.
+- Ensure scrolling works correctly.
+- Support different screen sizes, font scales and system navigation modes.
+- Avoid content being hidden beneath system bars.
+- Preserve the existing purple-and-gold identity.
+- Maintain a polished Material 3 appearance.
+- Avoid excessive animation, visual clutter and unnecessary empty space.
+
+Do not fix the problem by arbitrarily shifting every element upward.
+
+Inspect the real Compose hierarchy and correct the underlying layout issue.
+
+Preserve the existing Home features and all stored reading progress.
+
+---
+
+5. MAIN NAVIGATION AND SCREEN STRUCTURE
+
+Preserve the established MyBooks navigation and integrate the improvements into it.
+
+The main areas are:
+
+1. Home.
+2. My Library.
+3. Bookmarks & Notes.
+4. Community.
+5. Settings.
+
+Do not introduce a separate Backup tab or a standalone Backup Center.
+
+Backup & Restore belongs exclusively under Settings.
+
+Ensure that:
+
+- Every navigation item opens its correct screen.
+- Back navigation works.
+- The system Back button behaves correctly.
+- Navigation does not unnecessarily recreate readers or reset reading positions.
+- Reader screens can enter and exit immersive mode correctly.
+- Long lists remain scrollable.
+- The bottom navigation does not obstruct the reader or Community.
+- Community navigation never crashes the application.
+- Firebase errors never prevent users from opening their local library.
+
+---
+
+6. PERSONAL LIBRARY
+
+Create a complete, locally managed personal digital library.
+
+Users must be able to:
+
+- Import books and documents.
+- Open files without necessarily adding them to the library.
+- Add a previously opened file to the library later.
+- Remove a book from the library without unintentionally deleting the original file.
+- Edit a book's display title.
+- Edit the author.
+- Edit the description.
+- Change the category.
+- Create custom categories.
+- Rename categories.
+- Edit and delete categories with safe reassignment of affected books.
+- Add tags.
+- Create custom collections.
+- Edit collections.
+- Change a book's cover using an image selected by the user.
+- Restore an automatically detected cover where supported.
+- Mark books as Favorites.
+- Track reading status.
+- Sort and filter the library.
+- Search books by title, author and supported metadata.
+- Switch between grid and list layouts.
+- View recently added and recently opened books.
+- Continue reading from the previous position.
+- Identify completed and unfinished books.
+- Detect potential duplicate files.
+- Recover eligible recently removed library entries where supported.
+
+Suggested reading statuses:
+
+- Want to Read.
+- Currently Reading.
+- Finished.
+
+Keep custom titles, categories, covers, notes and progress stable across application updates.
+
+If the underlying document changes or its URI becomes inaccessible, show an informative message and let the user locate the file again.
+
+Do not assume the app owns or can delete files merely because a user opened them.
+
+---
+
+7. EXTERNAL PDF OPENING AND DEFAULT READER SUPPORT
+
+This is an essential requirement.
+
+Users must be able to use MyBooks to open supported PDFs and other supported document types from Android file managers and compatible applications.
+
+Implement the correct Android integration:
+
+- "ACTION_VIEW" where appropriate.
+- Correct MIME types.
+- Appropriate intent filters in the Android manifest.
+- Android Sharesheet and document import support.
+- Storage Access Framework integration.
+- Persisted URI permissions where supported.
+- Correct handling of "content://" URIs.
+- Correct handling of temporary URI access.
+- Safe file validation and error handling.
+
+When Android presents an Open With or default-app selection, MyBooks should be eligible for supported formats.
+
+Do not attempt to secretly change the device's default applications. The user must make the selection through Android's supported interface.
+
+Open without saving
+
+When the user opens a PDF from another application:
+
+- Open it directly in the MyBooks Reader.
+- Do not automatically add it to the permanent library.
+- Do not copy it into permanent app storage unless the user explicitly requests that action or the reader requires a managed temporary copy.
+- Preserve the source file.
+- Provide an optional Add to My Library action.
+- If the user does not add it, allow them to read and leave without retaining a permanent library entry.
+- Clean up temporary resources safely.
+- Restore the previous library and reading state when the external document is closed.
+
+If the user chooses Add to My Library, allow them to edit the title, author, description, category, tags and cover.
+
+Opening a PDF externally must not force Google Sign-In or require an internet connection.
+
+---
+
+8. ADVANCED, FULLSCREEN BOOK READER
+
+The Reader is one of the most important parts of MyBooks.
+
+The existing APK has several problems:
+
+- Tapping the page does not reliably navigate to the next page.
+- Page-turn sound does not play.
+- Some books cannot be read completely.
+- Too many unrelated interface elements appear while reading.
+- The Reader does not consistently behave as a dedicated reading screen.
+
+Fix the actual causes rather than merely changing the appearance.
+
+Immersive reading mode
+
+When a user opens a book:
+
+- Show the actual book content as the main focus.
+- Hide the bottom navigation and unrelated Home or Library elements.
+- Use the available screen space effectively.
+- Hide unnecessary toolbars and controls while reading.
+- Show Reader controls when the user taps the screen or invokes an appropriate gesture.
+- Allow the user to hide the controls again.
+- Keep page navigation accessible.
+- Support Android system insets and immersive display correctly.
+- Do not cause layout jumps when the controls appear or disappear.
+- Preserve the user's reading position.
+
+Do not place a permanent collection of unrelated buttons over the book page.
+
+PDF Reader
+
+Implement or repair:
+
+- Reliable PDF rendering.
+- Page-by-page navigation.
+- Vertical scrolling where appropriate.
+- Single-page and continuous reading modes.
+- Page number display.
+- Go to page.
+- Zoom in/out.
+- Pinch-to-zoom where supported.
+- Double-tap zoom where supported.
+- Correct handling of large PDFs.
+- Correct page orientation.
+- Landscape mode where appropriate.
+- Searchable text where the PDF contains extractable text.
+- Bookmarks and supported annotations.
+- Correct page boundaries and content sizing.
+- Reliable navigation through the last page.
+- Correct cleanup when switching books.
+
+A tap on the right side of the page should advance where the chosen reading mode supports tap navigation; a tap on the left side should go backward. Provide configurable tap zones and avoid interfering with pinch gestures, selection, controls or accessibility actions.
+
+Also support obvious alternative navigation methods such as page controls or horizontal swipes where appropriate.
+
+EPUB and reflowable text Reader
+
+Implement:
+
+- Correct chapter navigation.
+- Table of contents.
+- Text size controls.
+- Font selection where supported.
+- Line spacing and margins.
+- Light, Dark, Sepia and AMOLED themes.
+- Text selection.
+- Search.
+- Bookmarks.
+- Highlights and notes.
+- Page-like pagination where implemented.
+- Smooth scrolling as an alternative.
+- Reliable restoration of the last reading location.
+
+Do not pretend that a reflowable EPUB page corresponds to a fixed PDF page. Use a stable chapter/location representation for bookmarks and progress.
+
+Other text and document readers
+
+Provide correct readers for the formats actually supported.
+
+Do not display raw binary data or file contents that have not been decoded correctly.
+
+If a file is unsupported, corrupted, encrypted or password-protected, display a useful message and provide a safe way to exit or choose another file.
+
+Do not crash the entire application because one document fails to parse.
+
+---
+
+9. PAGE-TURN SOUND
+
+Add the page-turn sound feature under:
+
+Settings → Reading Preferences → Page-Turn Sound
+
+Sound URL:
+
+"https://muhammedomor-studio.github.io/bookreader/bookreader-page-flip.mp3"
+
+Required behavior:
+
+1. Initially show a Download Sound button.
+2. When the user taps the button, download the MP3 from the specified URL.
+3. Save the downloaded audio in app-private storage.
+4. Verify that the download completed successfully and the audio file can be opened.
+5. Once verified, replace the Download Sound button with an On/Off control.
+6. When enabled, play the sound on supported page-turn actions.
+7. When disabled, do not play the sound.
+8. Persist the user's preference across application restarts.
+9. After the first successful download, playback must work offline.
+10. If the download fails, provide a clear error message and a retry option.
+11. If the sound file is missing or corrupted, restore the download state.
+12. Provide an option to redownload the sound if needed.
+13. Do not download the sound repeatedly on every page turn.
+14. Do not play duplicate overlapping sounds from a single page-turn action.
+15. Release audio resources appropriately.
+
+Use a suitable audio playback implementation, with volume and resource behavior designed for mobile devices.
+
+The sound must not play merely because the user scrolls through a long document.
+
+For PDF page navigation and EPUB pagination, trigger the sound only when an actual supported page-turn action occurs. If a document uses continuous scrolling without meaningful page boundaries, do not play the sound on every scroll event.
+
+The rest of the reader must work without downloading the sound.
+
+---
+
+10. BOOKMARKS, HIGHLIGHTS AND NOTES
+
+Implement a reliable centralized Bookmarks & Notes section.
+
+Users must be able to:
+
+- Bookmark a page or stable reading location.
+- Highlight supported text.
+- Add personal notes.
+- Edit notes.
+- Delete notes.
+- Jump to a saved location.
+- View the related book title and cover.
+- Search notes where practical.
+- Export notes and highlights.
+- Preserve bookmarks and notes across app restarts.
+- Preserve them through app upgrades and verified backup/restore operations.
+
+Use document-appropriate location identifiers. A PDF page number and an EPUB chapter/location should not be treated as interchangeable.
+
+Deleting a library entry must follow a clear policy for its associated bookmarks and notes. Do not silently erase personal annotations when a safe alternative is possible.
+
+---
+
+11. FILE-FORMAT SUPPORT
+
+Implement genuine readers or viewers for the following formats where practical, with correct parsing and appropriate maintained libraries.
+
+Priority A: Core formats
+
+- PDF.
+- EPUB.
+- TXT.
+- HTML.
+- HTM.
+- Markdown (".md").
+
+Priority B: Additional document formats
+
+- DOCX.
+- RTF.
+- ODT.
+- FB2.
+- Appropriate, validated XML-based book/document formats.
+
+Priority C: Advanced formats
+
+- CBZ comic archives.
+- CBR comic archives.
+- MOBI.
+- AZW3.
+- DOC.
+- XPS.
+
+Priority D: Image-based reading
+
+- JPG.
+- JPEG.
+- PNG.
+- WEBP.
+- TIFF.
+
+For image-based formats, provide suitable image viewing, zoom and navigation.
+
+For CBZ/CBR, implement actual archive extraction/parsing and safe page ordering. Do not assume that a CBR file can be read as a ZIP archive.
+
+For MOBI/AZW3 and legacy DOC/XPS, evaluate available libraries and compatibility honestly. DRM-protected files may not be supported.
+
+ZIP should be supported as a backup/import archive where appropriate. Do not treat arbitrary ZIP archives as readable books without a deliberate import feature.
+
+Format implementation rules
+
+- Validate the real file content and format.
+- Use correct MIME types.
+- Do not merely accept an extension and display a fake reader.
+- Do not claim unsupported formats are fully supported.
+- Avoid loading entire large documents into memory.
+- Use streaming or incremental processing when appropriate.
+- Handle malformed, corrupted, encrypted and unsupported files gracefully.
+- Clearly document any format that cannot be implemented reliably with available libraries.
+
+Scanned PDFs and images require OCR before their image-only content can be searched as text.
+
+---
+
+12. LIBRARY SEARCH, METADATA AND ORGANIZATION
+
+Implement the following improvements:
+
+- Automatic metadata extraction where supported.
+- Editable title, author, publisher, language and description.
+- Custom covers.
+- Custom categories and tags.
+- Custom collections.
+- Smart collections.
+- Favorites.
+- Reading status.
+- Recently Added.
+- Recently Opened.
+- Recently Deleted, where supported safely.
+- Duplicate detection.
+- Advanced filtering.
+- Sorting by title, author, date added, last opened and reading status.
+- Search across book metadata.
+- Search within supported document text.
+- Storage usage information.
+- Clear identification of missing or inaccessible files.
+
+Automatic metadata detection must never overwrite user-edited metadata without permission.
+
+When duplicate files are detected, offer appropriate choices rather than deleting anything automatically.
+
+---
+
+13. READING PROFILES AND ACCESSIBILITY
+
+Implement professional reading preferences:
+
+- Light theme.
+- Dark theme.
+- Sepia theme.
+- AMOLED theme where appropriate.
+- Font-size controls.
+- Font selection for compatible readers.
+- Margin controls.
+- Line spacing.
+- Screen brightness assistance only where appropriate and permitted.
+- Optional keep-screen-on behavior.
+- Portrait and landscape support.
+- Fullscreen reading.
+- Page-turn sound.
+- Configurable page navigation.
+- Optional reduced animation.
+- System font scaling and accessibility support.
+
+Create optional reading profiles such as:
+
+- Comfortable Reading.
+- Night Reading.
+- Study Mode.
+
+Allow users to save and switch reading preferences without resetting their existing bookmarks or reading positions.
+
+Ensure important controls have meaningful content descriptions and are usable with Android accessibility services.
+
+Do not add PIN Lock or Biometric Lock.
+
+---
+
+14. COMMUNITY: REAL FIREBASE IMPLEMENTATION
+
+The existing APK displays a message indicating that online Community services are not configured.
+
+Fix this properly.
+
+Do not hide the message while leaving the service unimplemented.
+
+Investigate the existing Firebase configuration, project setup, authentication, Firestore dependencies, repository code, ViewModels, navigation, feature flags, indexes and security rules.
+
+Use the existing Firebase project:
+
+"android-my-books"
+
+Use the existing application ID:
+
+"com.mybooks.omor.dev"
+
+Use the existing "google-services.json" if it matches the application and Firebase project.
+
+Do not invent Firebase credentials or switch to a different project.
+
+If Firebase Console configuration is incomplete, implement the available code and document the exact remaining setup steps.
+
+Community requirements
+
+The Community must be a fully functional online feature with real persisted data.
+
+It must include:
+
+- Community feed.
+- Google Sign-In.
+- User profiles.
+- Text and emoji posts.
+- Optional Google Drive book-sharing buttons.
+- Comments.
+- Replies to comments.
+- Reactions/Like.
+- Post reporting.
+- Profile reporting.
+- Comment reporting.
+- Community search.
+- Notifications where supported.
+- Block User.
+- Admin moderation.
+- Verification badges.
+- Account restrictions.
+- Appropriate empty, loading, offline and error states.
+
+Do not populate the Community with fake posts.
+
+If there are no posts, show a polished empty state and an option to create the first post.
+
+If the device is offline, show an informative Community-specific state with a retry option. Do not crash the app.
+
+The local reader and personal library must remain fully usable while Community is offline.
+
+---
+
+15. GOOGLE SIGN-IN AND USER PROFILES
+
+Use Firebase Authentication with Google Sign-In, compatible with the project's current Firebase and Android configuration.
+
+Users must be able to:
+
+- Sign in.
+- Sign out.
+- View their own profile.
+- View other Community members' profiles.
+- View their display name and profile image.
+- See their own posts.
+- View their verification badge if authorized.
+- View relevant account status and moderation notices.
+- Report profiles.
+- Block other users.
+
+Use Firebase UID as the stable identity key.
+
+Do not use display names or email addresses as primary database identifiers.
+
+Handle cancelled sign-in, missing configuration, expired sessions, network failures and authentication errors gracefully.
+
+Do not require Google Sign-In for opening local books, reading PDFs, or managing the local library.
+
+Default profile pictures
+
+For ordinary Community users without a custom profile image, use:
+
+"https://pockethostbd.github.io/drive-one/picture/mybookscommunity-userprofilepicture.png"
+
+For the official administrator profile, use:
+
+"https://pockethostbd.github.io/drive-one/picture/mybooks%20communityadminprofilepicture.png"
+
+Use these exact URLs.
+
+Cache images appropriately and provide a fallback if an image cannot load.
+
+Do not confuse the administrator profile picture with the administrator verification badge.
+
+Do not require profile-image uploads to participate in the Community.
+
+---
+
+16. COMMUNITY POSTS AND FEED
+
+Create a real Firestore-backed feed.
+
+Users may create text posts containing Bangla, English and Unicode emojis.
+
+Implement:
+
+- Multiline post composer.
+- Text validation.
+- Empty-post prevention.
+- Reasonable character limits.
+- Author name and avatar.
+- Timestamp.
+- Optional verification badge.
+- Post details.
+- Edit own posts where permitted.
+- Delete own posts where permitted.
+- Report post.
+- Open author profile.
+- Comments and replies.
+- Like/reactions.
+- Optional Google Drive book attachment.
+- Pagination or bounded queries.
+- Pull-to-refresh or an equivalent refresh action.
+- Loading state.
+- Empty state.
+- Error state.
+- Offline state.
+
+Treat all user-generated text as untrusted data.
+
+Do not execute HTML, JavaScript or embedded scripts supplied in posts or comments.
+
+Do not add direct image, video or arbitrary file uploads to Community posts.
+
+Prevent repeated rapid taps from causing accidental duplicate submissions where practical.
+
+The UI must not claim that a post was published until the operation has succeeded or the application clearly identifies it as pending.
+
+---
+
+17. GOOGLE DRIVE BOOK SHARING
+
+Users may optionally attach a Google Drive sharing link to a Community post.
+
+Normal text posts must remain possible without a book attachment.
+
+When attaching a book, collect:
+
+- Human-readable book title.
+- Google Drive URL.
+
+Example displayed in a post:
+
+“এই বইটি আমার ভালো লেগেছে। যারা পড়তে চান, তাদের জন্য শেয়ার করলাম।”
+
+Book button:
+
+"📖 হিমু দ্বিতীয় প্রহর"
+
+The user must see the book title in the button instead of the raw URL.
+
+When the button is tapped, open the associated Google Drive link using a safe Android external-link mechanism.
+
+Requirements:
+
+- Validate that the supplied link belongs to an allowed Google Drive URL format.
+- Reject dangerous URL schemes and malformed links.
+- Preserve the underlying destination URL.
+- Do not automatically download or rehost the book.
+- Do not change Drive sharing permissions.
+- Explain that access depends on the owner's Drive permissions.
+- Do not claim that the book is publicly accessible unless this has been verified.
+- Do not collect Google passwords.
+- Do not store unnecessary access tokens.
+- Display a clear error if the link is invalid or unavailable.
+
+Do not expose the raw URL as the primary visible content of the book attachment.
+
+---
+
+18. COMMENTS, REPLIES AND REACTIONS
+
+Implement actual persisted comments and replies.
+
+Users must be able to:
+
+- Comment on another user's post.
+- Reply to a comment.
+- Read the relevant comment thread.
+- View comment author names and profile images.
+- See timestamps.
+- Open the author's profile.
+- Report comments.
+- Like or react to posts.
+- See updated reaction counts.
+- Remove their own content according to the defined policy.
+
+Replies must be associated with the correct parent comment and post.
+
+Use a scalable Firestore structure, such as a comments subcollection with parent-comment references, or another suitable design.
+
+Do not model replies as unrelated top-level posts.
+
+Use bounded queries and pagination where needed.
+
+Handle deleted or moderated comments consistently without corrupting the thread.
+
+Prevent users from changing another user's content unless a trusted moderation operation permits it.
+
+Do not allow duplicate reactions from the same user to inflate counts.
+
+---
+
+19. COMMUNITY REPORTING AND SAFETY
+
+Provide Report actions for:
+
+- Posts.
+- User profiles.
+- Comments.
+
+Reports must be persisted in Firestore or handled by a trusted moderation backend.
+
+A report may contain:
+
+- Report ID.
+- Reporter UID.
+- Target type.
+- Target ID.
+- Reason.
+- Optional explanation.
+- Creation timestamp.
+- Review status.
+- Moderation result where appropriate.
+
+Keep report details private from ordinary Community members.
+
+Only authorized moderation services and administrators may access protected report information.
+
+Prevent repeated abusive report submissions where practical.
+
+Provide clear confirmation when a report has actually been submitted.
+
+Do not display a fake success message if Firestore rejects the report.
+
+---
+
+20. OFFICIAL ADMINISTRATOR AND MODERATION
+
+Official administrator:
+
+"muhammedomor.dev@gmail.com"
+
+There must be one official administrator account.
+
+The administrator must receive the official administrator profile picture specified earlier.
+
+Create a dedicated Admin/Moderation interface that is accessible only to the authorized administrator.
+
+The administrator must be able to:
+
+- Review reports.
+- Review reported posts.
+- Review reported profiles.
+- Review reported comments.
+- Remove violating posts.
+- Moderate comments and replies.
+- Suspend or ban accounts.
+- Unban accounts where appropriate.
+- Deactivate or delete Community profiles according to a defined policy.
+- Grant the blue verification badge.
+- Revoke the blue verification badge.
+- View relevant moderation history.
+- See current account status.
+- Review and resolve reports.
+- Take appropriate action against harassment, spam and abusive content.
+
+Require confirmation for destructive actions.
+
+Display understandable success and failure messages.
+
+Account status
+
+Define distinct account states such as:
+
+- Active.
+- Suspended.
+- Banned.
+- Deactivated.
+
+Define what each status means and enforce the relevant restrictions.
+
+A suspended or banned user must not be able to bypass restrictions by calling Firestore directly or using an older version of the application.
+
+At minimum, enforce the relevant restrictions on post creation, comments, replies, reactions and other protected Community writes.
+
+A banned account must not lose access to its local books merely because its Community account has been restricted.
+
+Secure administrator authorization
+
+Do not grant administrator privileges merely because a client-side variable or editable Firestore field says "isAdmin = true".
+
+Do not rely solely on checking the administrator email in the Android UI.
+
+Use a trusted administrative authorization mechanism, such as Firebase custom claims assigned through a trusted administrative process, together with secure backend authorization and appropriate Firestore Security Rules.
+
+Only the official administrator should receive administrator privileges.
+
+Ordinary users must not be able to:
+
+- Promote themselves to administrator.
+- Promote other users to administrator.
+- Grant or revoke verification badges.
+- Ban other users.
+- Delete other users' protected profiles.
+- Change other users' account status.
+- Modify protected moderation records.
+
+Never include Firebase service-account private keys or privileged backend secrets in the Android application or public repository.
+
+If initial administrator provisioning requires a manual Firebase Console or trusted backend operation, document the exact steps.
+
+Do not create an insecure automatic admin-promotion process.
+
+---
+
+21. VERIFICATION BADGES
+
+Preserve the existing badge system.
+
+Official administrator badge
+
+- Color: "#BD081C".
+- Visible only for the authorized official administrator.
+- Use the existing administrator badge artwork if available.
+- Do not let ordinary users copy its authorization or grant it to themselves.
+
+Community verified badge
+
+- Color: "#26A5E4".
+- The authorized administrator can grant or revoke it.
+- Display it consistently beside the relevant user's name and profile.
+- Keep the badge state in trusted backend-controlled data.
+
+Use the existing badge artwork supplied with the project if available.
+
+Do not confuse administrator status, verification status and account status.
+
+Revoking a badge must update the trusted stored state and be reflected in the UI.
+
+A user's local preference or edited profile document must never be sufficient to create a verified badge.
+
+---
+
+22. ADMIN PROFILE AND COMMUNITY PROFILE MANAGEMENT
+
+Preserve the official administrator identity and the specified default profile pictures.
+
+Implement a clear policy for profile deactivation and deletion.
+
+When the administrator removes a Community profile:
+
+- Explain the effect before confirming.
+- Prevent the user from continuing prohibited Community operations.
+- Handle the profile's posts, comments, replies and references consistently.
+- Preserve moderation records where required for security and audit purposes.
+- Avoid deleting unrelated personal data.
+- Do not confuse Community profile deletion with deletion of the user's local library.
+
+If permanent Firebase Authentication deletion requires a trusted backend or recent authentication, implement the supported workflow and document the requirement.
+
+Do not claim permanent deletion if only the profile screen has been hidden.
+
+---
+
+23. FIRESTORE DATA MODEL AND SECURITY
+
+Create or adapt a documented Firestore schema.
+
+A possible structure is:
+
+- "users"
+- "posts"
+- "posts/{postId}/comments"
+- "posts/{postId}/reactions"
+- "reports"
+- "moderationLogs"
+- Additional collections only where justified.
+
+Use stable IDs and server timestamps where appropriate.
+
+Validate:
+
+- Required fields.
+- Text length.
+- Field types.
+- Ownership.
+- Allowed status values.
+- Google Drive link format.
+- Authorized moderation operations.
+- Verification badge changes.
+- Account status changes.
+- Reaction uniqueness.
+- Report access.
+
+Provide deployable Firestore Security Rules and all required indexes.
+
+Use Cloud Functions or another trusted backend for privileged operations where necessary.
+
+Never use permissive rules that allow every authenticated user to modify all documents.
+
+Do not trust client-generated administrator flags, badge fields or account-status changes.
+
+Test the security model against ordinary users, the official administrator, banned users and unauthenticated clients.
+
+If the current Firebase project does not have all required services enabled, document the exact remaining setup.
+
+---
+
+24. READING PRODUCTIVITY FEATURES
+
+Implement the following features using local storage wherever possible.
+
+Reading statistics
+
+Track:
+
+- Total books.
+- Completed books.
+- Currently reading.
+- Want to Read.
+- Reading time.
+- Daily and weekly progress.
+- Reading streak.
+- Reading calendar.
+- Reading goals.
+- Recent reading sessions.
+
+Do not invent precise reading time when it cannot be measured reliably.
+
+Reading goals
+
+Allow users to select daily reading targets, such as 15, 30 or 60 minutes, or choose a custom goal.
+
+Show progress toward the selected goal.
+
+Store personal reading statistics locally.
+
+Reading timer
+
+Implement a focus-reading timer with:
+
+- Start.
+- Pause.
+- Resume.
+- Stop.
+- Session duration.
+- Session history.
+- Optional break reminders.
+
+Ensure the timer does not falsely report reading time while the app is not actually in a reading session, according to the chosen tracking policy.
+
+Reading reminders
+
+Allow the user to configure optional reminders.
+
+Use Android's supported scheduling APIs.
+
+Handle notification permission requirements and device restrictions gracefully.
+
+Do not send unnecessary notifications.
+
+Users must be able to disable reminders.
+
+Reading history and time remaining
+
+Show the last reading location and estimated remaining time where meaningful.
+
+Clearly label time remaining as an estimate based on observed or configured reading speed.
+
+Do not display misleading estimates for formats or reading modes where reliable progress measurement is unavailable.
+
+---
+
+25. TEXT-TO-SPEECH AND OCR
+
+Implement these as actual features, not decorative controls.
+
+Text-to-Speech
+
+Where supported, provide Read Aloud for text-based formats such as EPUB and TXT.
+
+Use Android TextToSpeech APIs or another suitable implementation.
+
+Support play, pause, resume, stop and speech progress.
+
+Handle missing voices and language availability.
+
+Bengali voice quality depends on the installed TTS engine and available voices. Do not promise Bengali speech on every device.
+
+For PDFs, use text extraction where possible.
+
+Do not pretend that image-only PDF pages can be read aloud without OCR or another text-recognition step.
+
+OCR for scanned documents
+
+Where practical, provide OCR for scanned PDFs or supported images.
+
+Requirements:
+
+- Process selected documents safely.
+- Keep OCR output local by default.
+- Allow searching recognized text.
+- Identify that OCR results may contain errors.
+- Avoid blocking the main thread.
+- Handle large files and cancellation.
+- Clearly explain any language-model or OCR-language limitations.
+
+Do not silently upload a user's personal book to an external OCR service.
+
+If a suitable offline OCR engine is unavailable for a language or format, document the limitation instead of presenting an unreliable result as accurate.
+
+---
+
+26. SEARCH AND SMART ORGANIZATION
+
+Implement:
+
+- Global library search.
+- Metadata search.
+- Supported document-content search.
+- Community post search.
+- Community member search where appropriate.
+- Advanced filters.
+- Sort options.
+- Smart collections.
+- Duplicate detection.
+- Reading status filters.
+- Search within EPUB chapters and supported PDF text.
+- Search history where useful, with an option to clear it.
+
+Keep local book search available offline.
+
+Community search requires network access unless data is already locally cached.
+
+Do not download unlimited Community content simply to implement search.
+
+---
+
+27. BACKUP AND RESTORE — SETTINGS ONLY
+
+All backup and restore functionality must live under:
+
+Settings → Backup & Restore
+
+Do not create a separate main navigation item for Backup.
+
+Provide a clear interface for:
+
+- Full personal-data backup.
+- Selected-book backup where supported.
+- Exporting notes and bookmarks.
+- Backup history or last-backup status where appropriate.
+- Importing a valid backup.
+- Restoring data.
+- Inspecting backup contents before restoration.
+- Handling duplicate records.
+- Handling incompatible backup versions.
+- Recovering from interrupted backup operations.
+
+Backups should include relevant local library metadata, user-selected managed files where applicable, covers, categories, collections, bookmarks, notes, reading positions, reading preferences and reading statistics.
+
+Do not assume that an external file can be copied if the user has not granted permission.
+
+Use ZIP archives where appropriate, with a versioned manifest and checksums.
+
+Before restoring:
+
+- Validate the archive.
+- Validate the manifest.
+- Verify checksums where available.
+- Validate file paths.
+- Reject path traversal and unsafe archive entries.
+- Check schema compatibility.
+- Resolve duplicates safely.
+- Protect existing user data against incomplete restoration.
+
+If restoration fails, preserve the existing library.
+
+Do not automatically erase existing data when a backup is imported.
+
+The Community and local library are separate systems. Do not include private Community data or remote Firestore data in personal backups unless explicitly designed and authorized.
+
+A Google Drive link posted in Community is not the same as a locally saved book. Do not include the remote book file automatically.
+
+---
+
+28. STORAGE AND PERFORMANCE MANAGEMENT
+
+Implement a useful Storage Manager under Settings.
+
+Where feasible, show:
+
+- Library metadata size.
+- App-managed book storage.
+- Cover cache.
+- Temporary files.
+- Downloaded page-turn sound.
+- Other safe-to-clear caches.
+
+Allow users to clear disposable caches.
+
+Do not accidentally delete original documents, notes, bookmarks, reading progress or personal backup files.
+
+Use efficient image loading and caching.
+
+Handle large documents without loading everything into memory.
+
+Use bounded queries, pagination and appropriate list keys.
+
+Prevent unnecessary Compose recompositions.
+
+Ensure the app does not freeze while opening a large PDF or loading a Community feed.
+
+---
+
+29. PRIVACY DASHBOARD
+
+Add a simple privacy information screen under Settings.
+
+Explain:
+
+- Personal library data stored locally.
+- Which features require internet access.
+- What information is used by Firebase Community.
+- What data is visible to other Community members.
+- How reports are handled.
+- How Google Drive links work.
+- How optional analytics works, if included.
+- How to clear appropriate cached data.
+- How to export or back up personal information.
+
+Do not collect unnecessary personal information.
+
+Do not transmit book content, private notes or reading history to Community or Analytics without a clear reason and appropriate user disclosure.
+
+Keep PIN Lock and Biometric Lock excluded.
+
+---
+
+30. FIREBASE ANALYTICS AND EXISTING CONFIGURATION
+
+The project previously supplied these Gradle snippets:
+
+Project-level plugin declaration:
+
+plugins {
+    id("com.google.gms.google-services") version "4.6.0" apply false
+}
+
+App-module plugin and dependencies:
+
+plugins {
+    id("com.android.application")
+    id("com.google.gms.google-services")
+}
+
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+    implementation("com.google.firebase:firebase-analytics")
+}
+
+Treat these as the previously supplied configuration, not as permission to blindly replace the existing Gradle files.
+
+Inspect the actual Gradle structure and adapt the snippets to the project's existing plugin versions, dependency versions and configuration.
+
+If these versions are incompatible with the current project, select compatible versions and explain the change.
+
+Do not add Firebase Analytics merely to make Community work. Analytics is separate from Authentication and Firestore.
+
+If Analytics is included, configure it appropriately, disclose its use in the privacy information, and avoid recording sensitive personal reading information.
+
+Preserve the existing Firebase project and valid "google-services.json".
+
+Never put privileged Firebase credentials in client code.
+
+---
+
+31. SETTINGS SCREEN
+
+Preserve and improve the existing Settings screen.
+
+Include suitable sections for:
+
+- Appearance.
+- Language.
+- Reading Preferences.
+- Page-Turn Sound.
+- Keep Screen On.
+- Reader defaults.
+- Notifications and Reading Reminders.
+- Reading Goals.
+- Storage Management.
+- Backup & Restore.
+- Privacy information.
+- Community account controls where applicable.
+- Developer information.
+- Official Shop.
+- Support Email.
+- About MyBooks.
+- Version and build information.
+
+Do not add PIN Lock or Biometric Lock.
+
+Developer Official Shop
+
+Provide a visible, polished button labeled:
+
+Official Developer Shop
+
+Open:
+
+"https://muhammedomor.supportkori.shop/"
+
+Use Android's appropriate browser-opening mechanism.
+
+Handle the absence of a compatible browser gracefully.
+
+Support Email
+
+Provide a button labeled:
+
+Contact Support
+
+Recipient:
+
+"muhammedomor.studio@gmail.com"
+
+Open an email composer using an appropriate "mailto:" intent.
+
+Use a suitable subject, such as "MyBooks Support".
+
+Do not invent a support email address or falsely claim an email was sent. The user must send the message through their email application.
+
+Preserve the existing MyBooks logo and official branding.
+
+Do not replace the existing logo with a different generated logo.
+
+---
+
+32. DESIGN SYSTEM AND USER EXPERIENCE
+
+Use a consistent, premium, minimal Material 3 interface.
+
+Maintain the existing purple-and-gold MyBooks identity.
+
+Requirements:
+
+- Consistent spacing.
+- Readable typography.
+- Correct visual hierarchy.
+- Responsive layouts.
+- Appropriate touch-target sizes.
+- Good contrast.
+- Clear loading states.
+- Helpful empty states.
+- Meaningful error states.
+- Confirmation dialogs for destructive operations.
+- Accessible labels and content descriptions.
+- Correct keyboard handling.
+- Smooth but restrained transitions.
+- No excessive animation.
+- No unnecessary blank areas.
+- No permanently visible reader controls that obscure the book.
+- No raw Firebase exception messages shown to normal users.
+
+Bangla should remain the default language, with an English language option.
+
+All user-facing text should use centralized, maintainable string resources.
+
+Do not hard-code only Bangla text into layouts in a way that prevents English localization.
+
+Preserve the current logo and other existing brand assets.
+
+Use the exact supplied Community profile-image URLs.
+
+---
+
+33. OPTIONAL READING SYNC
+
+Provide an architecture that can support optional cross-device reading synchronization in a future or enabled implementation.
+
+If implemented in this version, it must be optional and must not make local reading dependent on an account or network connection.
+
+Possible synchronized data includes:
+
+- Reading progress.
+- Bookmarks.
+- Notes.
+- Selected reading preferences.
+
+Clearly distinguish local-only books from content that can actually be accessed on another device.
+
+Do not assume that a file's local URI or original file can be transferred to another phone simply by syncing metadata.
+
+Handle synchronization conflicts safely.
+
+Never overwrite newer local data without a defined conflict-resolution policy.
+
+If a full secure synchronization service cannot be implemented and tested in the current project, provide the architecture and document it as a future capability rather than displaying a nonfunctional Sync button.
+
+---
+
+34. CRASH RECOVERY AND ERROR HANDLING
+
+Fix the actual crashes found during inspection.
+
+In particular, investigate the Community crash and the reader's inability to navigate or finish reading some documents.
+
+Implement:
+
+- Proper exception handling.
+- Clear error states.
+- Retry actions.
+- Safe resource cleanup.
+- Lifecycle-aware tasks.
+- Cancellation of obsolete jobs.
+- Correct coroutine scopes.
+- File access validation.
+- Graceful handling of missing files.
+- Safe handling of missing metadata.
+- Handling of empty Firestore collections.
+- Handling of missing user profiles.
+- Handling of unavailable profile images.
+- Handling of malformed links.
+- Handling of invalid or unsupported files.
+- Handling of network disconnections.
+- Handling of large books.
+- Recovery from interrupted imports and backups.
+
+Do not catch all exceptions and silently ignore them.
+
+Log useful technical diagnostics without exposing secrets, private book contents, authentication tokens or unnecessary personal information.
+
+The application must never crash merely because:
+
+- Community has no posts.
+- A post has no comments.
+- A user has no profile picture.
+- A document is corrupted.
+- A Google Drive link is invalid.
+- Firebase is temporarily unavailable.
+- A page-turn sound file is missing.
+- A backup is invalid.
+
+---
+
+35. SECURITY AND DATA INTEGRITY
+
+Use least-privilege permissions.
+
+Validate input at appropriate boundaries.
+
+Secure Community operations with trusted backend authorization and Firestore Security Rules.
+
+Prevent ordinary users from modifying protected roles, badges and moderation data.
+
+Protect against duplicate writes, invalid links, unsafe archive paths and corrupted imports.
+
+Do not include private keys, signing credentials or service-account files in public source control.
+
+Do not hard-code a privileged backend secret into the APK.
+
+Do not claim security merely because a button is hidden from ordinary users.
+
+Do not destroy user data during migrations, restore operations or app updates.
+
+Ensure that existing library data remains compatible with the upgraded application.
+
+---
+
+36. GITHUB ACTIONS: BUILD A REAL APK
+
+I primarily work from an Android phone and want to build and download the APK through GitHub Actions.
+
+Create or repair the complete Android build configuration and GitHub Actions workflow.
+
+The repository must contain the actual Android source code, compatible Gradle files, Gradle wrapper, required resources, manifest and build configuration.
+
+Create a workflow such as:
+
+".github/workflows/build-apk.yml"
+
+The workflow should:
+
+1. Check out the repository.
+2. Set up a compatible JDK.
+3. Configure the Android SDK.
+4. Validate the Gradle wrapper.
+5. Run the relevant unit tests.
+6. Run static checks where practical.
+7. Build the debug APK.
+8. Verify that the APK file exists.
+9. Upload the APK as a downloadable GitHub Actions artifact.
+10. Report build failures clearly.
+
+Use the correct Gradle task, such as:
+
+./gradlew assembleDebug
+
+Adapt the task if the existing project has a different valid build configuration.
+
+Do not fabricate an APK or upload an empty artifact.
+
+Do not claim the APK was built if the workflow was not actually run or the build failed.
+
+Provide a precise repository path for the generated APK artifact.
+
+If a separate release workflow is added, use GitHub Secrets for signing credentials.
+
+Never commit signing keys, passwords or privileged service-account keys.
+
+The application must retain the correct package name:
+
+"com.mybooks.omor.dev"
+
+Ensure the Firebase configuration matches the application ID.
+
+If a required Firebase configuration file is absent or invalid, fail clearly or document the exact remaining setup rather than silently building a nonfunctional Community.
+
+---
+
+37. TESTING AND ACCEPTANCE CRITERIA
+
+Run real tests against the actual project.
+
+Do not rely exclusively on screenshots or compilation success.
+
+Home and navigation
+
+- Home content is positioned correctly.
+- Excessive top spacing is removed.
+- System insets work correctly.
+- Bottom navigation does not obscure content.
+- Scrolling works.
+- The app remains usable on small screens.
+- Existing library data is preserved.
+
+Reader
+
+- Open a PDF from the library.
+- Open a PDF from another Android application.
+- Read the document without adding it to the library.
+- Add the externally opened document to the library.
+- Navigate forward and backward.
+- Tap the appropriate page zones.
+- Test available swipe or page controls.
+- Navigate to the final page.
+- Verify that large documents do not crash the app.
+- Verify that EPUB chapter navigation works.
+- Verify that reading progress is restored.
+- Verify fullscreen reading.
+- Verify Reader controls can be shown and hidden.
+- Verify bookmarks and notes.
+- Verify page-turn sound download.
+- Verify sound playback.
+- Verify the Off state.
+- Verify offline playback after a successful download.
+- Verify recovery from a missing or invalid sound file.
+
+Library
+
+- Import supported documents.
+- Edit title and author.
+- Change a custom cover.
+- Create and rename categories.
+- Create and edit collections.
+- Search and filter books.
+- Detect duplicate candidates.
+- Preserve user metadata across restart.
+- Handle missing file permissions.
+- Verify safe removal and restoration behavior.
+
+Community
+
+- Launch Community with internet access.
+- Launch Community while offline.
+- Confirm that offline Community does not crash the application.
+- Sign in with Google.
+- Cancel Google Sign-In.
+- Publish a Bangla post.
+- Publish an English post.
+- Publish a post containing emojis.
+- Open a profile.
+- Verify default profile pictures.
+- Verify administrator identity and badge.
+- Attach a Google Drive book link.
+- Confirm the button displays the book title.
+- Open the correct Google Drive destination.
+- Add comments.
+- Reply to comments.
+- Like and unlike a post where supported.
+- Report a post.
+- Report a profile.
+- Report a comment.
+- Verify that reports are persisted.
+- Verify that ordinary users cannot access moderation tools.
+- Verify that a banned user cannot create prohibited Community content.
+- Verify that a normal user cannot grant themselves a badge.
+- Verify that the administrator can grant and revoke the blue badge.
+- Verify that the official red administrator badge remains restricted.
+- Verify that Firestore rules prevent unauthorized writes.
+
+Backup and Restore
+
+- Create a backup.
+- Validate the generated archive.
+- Restore a valid backup.
+- Handle duplicates.
+- Reject corrupted or incompatible backups safely.
+- Confirm that a failed restore does not destroy existing data.
+- Confirm that Backup & Restore exists only under Settings.
+
+Productivity and settings
+
+- Test reading statistics.
+- Test reading goals.
+- Test timer start, pause and resume.
+- Test reminder configuration and permissions.
+- Test themes and language selection.
+- Test Official Developer Shop.
+- Test Contact Support.
+- Test storage management.
+- Confirm that PIN and Biometric Lock are absent.
+
+Build
+
+- Run unit tests.
+- Run available static checks.
+- Build the actual APK.
+- Verify the artifact exists and is not empty.
+- Verify the package ID.
+- Test the built APK when a suitable Android device or emulator is available.
+- Report any tests that could not be run.
+
+Do not mark a test as passed unless it was actually executed successfully.
+
+---
+
+38. DOCUMENTATION AND FINAL DELIVERY
+
+Deliver the actual upgraded project, not merely code fragments.
+
+Provide:
+
+1. Updated Android source code.
+2. Updated Gradle configuration.
+3. Updated Android manifest and intent filters.
+4. Updated Firebase integration.
+5. Firestore Security Rules.
+6. Required Firestore indexes.
+7. Trusted backend or Cloud Functions code where necessary.
+8. Secure administrator initialization instructions.
+9. Database migration code.
+10. Updated assets and resources, preserving existing branding.
+11. GitHub Actions workflow.
+12. Build instructions.
+13. Firebase setup instructions.
+14. Privacy and security notes.
+15. Test results.
+16. A concise list of files changed.
+17. A list of implemented features.
+18. A list of features that remain blocked by external configuration or technical limitations.
+19. The actual APK artifact or a verified downloadable build location, if successfully generated.
+
+If the repository is already connected to GitHub and the available tools permit file changes, implement the changes directly.
+
+Do not stop after producing a master plan.
+
+If the environment cannot access a required repository, request the repository or source files instead of pretending to modify them.
+
+If deployment or Firebase Console access requires my authorization, provide the exact manual steps.
+
+---
+
+39. DEFINITION OF DONE
+
+The upgraded MyBooks application is complete only when the following conditions are satisfied:
+
+- The existing project has been upgraded rather than replaced.
+- Existing local library data and reading progress are preserved.
+- The Home screen layout is corrected.
+- The Reader provides reliable navigation and full-document reading.
+- Immersive reading mode works.
+- Page-turn sound can be downloaded once and used offline.
+- External PDF opening works, including reading without saving to the library.
+- Users can manage book metadata, categories, collections and custom covers.
+- Bookmarks, highlights and notes work.
+- Backup & Restore works under Settings.
+- The Community uses real Firebase data.
+- Google Sign-In and user profiles work.
+- The supplied default profile pictures are used.
+- Posts, comments, replies and reactions work as implemented.
+- Google Drive book buttons display book titles and open the associated links.
+- Reporting and moderation are persisted and secure.
+- The official administrator has the correct protected identity.
+- Verification badges are controlled by trusted authorization.
+- Account restrictions are enforced on the backend.
+- Reading statistics, goals, timer and reminders work where implemented.
+- Text-to-Speech and OCR behave honestly according to their supported formats and available engines.
+- Privacy and storage management are implemented.
+- The Official Developer Shop and Support Email buttons work.
+- PIN Lock and Biometric Lock are absent.
+- GitHub Actions builds and uploads the actual APK.
+- Tests are executed and their results are documented.
+- No known critical crash remains unreported.
+- Any feature requiring unavailable external configuration is explicitly documented.
+
+Final instruction: Work carefully and incrementally. Preserve all existing features and data. Prioritize stability, correctness, security, accessibility and a premium reading experience over unnecessary complexity. Do not remove functionality to simplify the implementation. Do not falsely claim success. Deliver the complete upgraded MyBooks project and a verified APK build wherever the available environment permits.

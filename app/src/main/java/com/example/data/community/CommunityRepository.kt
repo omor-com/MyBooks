@@ -14,6 +14,9 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
@@ -34,9 +37,11 @@ class CommunityRepository(
 
     companion object {
         const val COL_USERS = "community_users"
+        const val SUBCOL_BLOCKED_USERS = "blocked_users"
         const val COL_ADMINS = "admins"
         const val COL_POSTS = "community_posts"
         const val SUBCOL_COMMENTS = "comments"
+        const val SUBCOL_REACTIONS = "reactions"
         const val COL_REPORTS = "community_reports"
         const val COL_AUDIT_LOGS = "moderation_audit_logs"
     }
@@ -294,6 +299,7 @@ class CommunityRepository(
                 "authorPhotoUrl" to authorProfile.photoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL },
                 "authorBadge" to authorProfile.badge.firestoreValue,
                 "content" to cleanContent,
+                "likeCount" to 0L,
                 "visibility" to PostVisibility.VISIBLE.firestoreValue,
                 "createdAt" to FieldValue.serverTimestamp(),
                 "updatedAt" to FieldValue.serverTimestamp()
@@ -357,6 +363,149 @@ class CommunityRepository(
         return try {
             requireUser()
             db.collection(COL_POSTS).document(postId).delete().await()
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.DELETE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun togglePostLike(postId: String): Result<Boolean> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val postPath = "$COL_POSTS/$postId"
+        return try {
+            val postRef = db.collection(COL_POSTS).document(postId)
+            val reactionRef = postRef.collection(SUBCOL_REACTIONS).document(uid)
+            val nowLiked = db.runTransaction { transaction ->
+                val postSnap = transaction.get(postRef)
+                if (!postSnap.exists()) throw IllegalStateException("Post not found")
+                val reactionSnap = transaction.get(reactionRef)
+                val currentLikes = (postSnap.get("likeCount") as? Number)?.toLong()?.coerceAtLeast(0L) ?: 0L
+                if (reactionSnap.exists()) {
+                    transaction.delete(reactionRef)
+                    transaction.update(postRef, "likeCount", (currentLikes - 1L).coerceAtLeast(0L))
+                    false
+                } else {
+                    transaction.set(
+                        reactionRef,
+                        mapOf(
+                            "uid" to uid,
+                            "createdAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                    transaction.update(postRef, "likeCount", currentLikes + 1L)
+                    true
+                }
+            }.await()
+            Result.success(nowLiked)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.WRITE, postPath)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun fetchLikedPostIds(postIds: List<String>): Result<Set<String>> {
+        val uid = auth.currentUser?.uid ?: return Result.success(emptySet())
+        val targets = postIds.filter { it.isNotBlank() }.distinct().take(50)
+        if (targets.isEmpty()) return Result.success(emptySet())
+        return try {
+            val liked = coroutineScope {
+                targets.map { postId ->
+                    async {
+                        try {
+                            val exists = db.collection(COL_POSTS)
+                                .document(postId)
+                                .collection(SUBCOL_REACTIONS)
+                                .document(uid)
+                                .get()
+                                .await()
+                                .exists()
+                            if (exists) postId else null
+                        } catch (ce: CancellationException) {
+                            throw ce
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull().toSet()
+            }
+            Result.success(liked)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observeBlockedUsers(): Flow<List<BlockedUserEntry>> = flow {
+        val uid = requireUser().uid
+        val path = "$COL_USERS/$uid/$SUBCOL_BLOCKED_USERS"
+        emitAll(
+            db.collection(COL_USERS)
+                .document(uid)
+                .collection(SUBCOL_BLOCKED_USERS)
+                .snapshots()
+                .map { snapshot -> snapshot.safeToBlockedUsers() }
+                .catch { error ->
+                    val fsError = generateSequence(error) { it.cause }
+                        .filterIsInstance<FirebaseFirestoreException>()
+                        .firstOrNull()
+                    if (fsError == null && error is CancellationException) throw error
+                    val toLog = fsError ?: (error as? Exception)
+                    if (toLog != null && auth.currentUser?.uid == uid) {
+                        handleFirestoreError(toLog, OperationType.LIST, path)
+                    }
+                    throw error
+                }
+        )
+    }
+
+    suspend fun blockUser(
+        blockedUid: String,
+        displayName: String,
+        photoUrl: String
+    ): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        if (blockedUid.isBlank() || blockedUid == uid) {
+            return Result.failure(IllegalArgumentException("Cannot block this user"))
+        }
+        val path = "$COL_USERS/$uid/$SUBCOL_BLOCKED_USERS/$blockedUid"
+        return try {
+            val payload = mapOf(
+                "blockedUid" to blockedUid,
+                "displayName" to displayName.trim().take(60).ifBlank { "MyBooks Reader" },
+                "photoUrl" to photoUrl.trim().take(500).ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL },
+                "createdAt" to FieldValue.serverTimestamp()
+            )
+            db.collection(COL_USERS)
+                .document(uid)
+                .collection(SUBCOL_BLOCKED_USERS)
+                .document(blockedUid)
+                .set(payload)
+                .await()
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.CREATE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unblockUser(blockedUid: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Not signed in"))
+        val path = "$COL_USERS/$uid/$SUBCOL_BLOCKED_USERS/$blockedUid"
+        return try {
+            db.collection(COL_USERS)
+                .document(uid)
+                .collection(SUBCOL_BLOCKED_USERS)
+                .document(blockedUid)
+                .delete()
+                .await()
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
@@ -917,6 +1066,24 @@ class CommunityRepository(
             try {
                 doc.toObject(ModerationAuditLog::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
                     ?.let { log -> log.copy(id = log.id.ifBlank { doc.id }) }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    private fun QuerySnapshot.safeToBlockedUsers(): List<BlockedUserEntry> =
+        documents.mapNotNull { doc ->
+            try {
+                doc.toObject(BlockedUserEntry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    ?.let { entry ->
+                        val resolvedUid = entry.blockedUid.ifBlank { doc.id }
+                        entry.copy(
+                            id = entry.id.ifBlank { resolvedUid },
+                            blockedUid = resolvedUid,
+                            displayName = entry.displayName.ifBlank { "MyBooks Reader" },
+                            photoUrl = entry.photoUrl.ifBlank { CommunityConstants.DEFAULT_USER_AVATAR_URL }
+                        )
+                    }
             } catch (_: Exception) {
                 null
             }

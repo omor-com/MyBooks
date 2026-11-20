@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,29 +26,34 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.CollectionsBookmark
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -56,15 +62,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,16 +79,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.local.entity.BookWithDetails
-import com.example.data.local.entity.CategoryEntity
-import com.example.data.local.entity.CollectionEntity
+import com.example.data.local.entity.ReadingStatus
+import com.example.data.local.entity.resolvedReadingStatus
 import com.example.data.reader.DocumentFormat
 import com.example.ui.components.BookCoverThumbnail
 import com.example.ui.components.formatFileSize
-import com.example.ui.viewmodel.DuplicatePromptState
 import com.example.ui.viewmodel.LibraryFilterChip
 import com.example.ui.viewmodel.LibrarySortOption
 import com.example.ui.viewmodel.LibraryUiState
@@ -93,6 +98,10 @@ import kotlin.math.roundToInt
 fun LibraryScreen(
     state: LibraryUiState,
     onSearchChange: (String) -> Unit,
+    onSubmitSearch: (String) -> Unit,
+    onToggleSearchInsideBooks: (Boolean) -> Unit,
+    onClearSearchHistory: () -> Unit,
+    onOpenBookAtLocation: (bookId: String, pageIndex: Int?, chapterIndex: Int?) -> Unit,
     onToggleGridView: () -> Unit,
     onSelectFilterChip: (LibraryFilterChip) -> Unit,
     onSelectCategory: (String?) -> Unit,
@@ -102,6 +111,7 @@ fun LibraryScreen(
     onImportClick: () -> Unit,
     onOpenBook: (String) -> Unit,
     onToggleFavorite: (BookWithDetails) -> Unit,
+    onSetReadingStatus: (String, ReadingStatus) -> Unit,
     onRelocateFile: (String, Uri) -> Unit,
     onUpdateMetadata: (
         bookId: String,
@@ -118,20 +128,26 @@ fun LibraryScreen(
     onRestoreDefaultCover: (String) -> Unit,
     onCreateCategory: (String) -> Unit,
     onRenameCategory: (String, String) -> Unit,
-    onDeleteCategory: (String) -> Unit,
-    onCreateCollection: (String) -> Unit,
-    onDeleteBook: (String, Boolean) -> Unit,
+    onDeleteCategory: (String, String?) -> Unit,
+    onCreateCollection: (String, String) -> Unit,
+    onUpdateCollection: (String, String, String) -> Unit,
+    onDeleteCollection: (String) -> Unit,
+    onSoftDeleteBook: (String) -> Unit,
+    onRestoreBookFromTrash: (String) -> Unit,
+    onDeleteBookPermanently: (String, Boolean) -> Unit,
     onDuplicateSkip: () -> Unit,
     onDuplicateKeepBoth: () -> Unit,
     onDuplicateReplaceUri: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var editingBook by remember { mutableStateOf<BookWithDetails?>(null) }
-    var deletingBook by remember { mutableStateOf<BookWithDetails?>(null) }
+    var deletingBookForever by remember { mutableStateOf<BookWithDetails?>(null) }
     var relocatingBookId by remember { mutableStateOf<String?>(null) }
     var coverTargetBookId by remember { mutableStateOf<String?>(null) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showManageCategoriesDialog by remember { mutableStateOf(false) }
+    var showManageCollectionsDialog by remember { mutableStateOf(false) }
+    var showTrashDialog by remember { mutableStateOf(false) }
 
     val relocateLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -155,6 +171,7 @@ fun LibraryScreen(
 
     Scaffold(
         modifier = modifier.testTag("library_screen"),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onImportClick,
@@ -172,7 +189,7 @@ fun LibraryScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -181,9 +198,28 @@ fun LibraryScreen(
                 Text(
                     text = stringResource(R.string.library_title),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { showTrashDialog = true },
+                        modifier = Modifier.testTag("library_trash_button")
+                    ) {
+                        if (state.deletedBooks.isNotEmpty()) {
+                            BadgedBox(badge = { Badge { Text("${state.deletedBooks.size}") } }) {
+                                Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.library_trash_title))
+                            }
+                        } else {
+                            Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.library_trash_title))
+                        }
+                    }
+                    IconButton(
+                        onClick = { showManageCollectionsDialog = true },
+                        modifier = Modifier.testTag("library_manage_collections_button")
+                    ) {
+                        Icon(Icons.Rounded.CollectionsBookmark, contentDescription = stringResource(R.string.library_manage_collections_title))
+                    }
                     IconButton(
                         onClick = { showManageCategoriesDialog = true },
                         modifier = Modifier.testTag("library_manage_categories_button")
@@ -232,7 +268,7 @@ fun LibraryScreen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = onSearchChange,
@@ -249,39 +285,151 @@ fun LibraryScreen(
                         }
                     }
                 },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSubmitSearch(state.searchQuery) }),
                 shape = RoundedCornerShape(16.dp)
             )
 
-            // Filter chips row: All, Favorites, Categories, Collections, Tags
+            // Search inside book text toggle + search history chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.library_search_inside_books),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Switch(
+                    checked = state.searchInsideBooksEnabled,
+                    onCheckedChange = {
+                        onToggleSearchInsideBooks(it)
+                        if (it && state.searchQuery.trim().length >= 2) {
+                            onSubmitSearch(state.searchQuery)
+                        }
+                    },
+                    modifier = Modifier.testTag("library_search_inside_switch")
+                )
+            }
+
+            if (state.searchQuery.isBlank() && state.searchHistory.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.History,
+                        contentDescription = stringResource(R.string.library_search_history_title),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    state.searchHistory.forEach { term ->
+                        FilterChip(
+                            selected = false,
+                            onClick = { onSubmitSearch(term) },
+                            label = { Text(term, maxLines = 1) }
+                        )
+                    }
+                    TextButton(onClick = onClearSearchHistory) {
+                        Text(stringResource(R.string.action_clear))
+                    }
+                }
+            }
+
+            // Inside-books search results panel
+            if (state.searchInsideBooksEnabled && state.searchQuery.trim().length >= 2) {
+                if (state.isSearchingInsideBooks) {
+                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text(
+                            text = stringResource(R.string.library_search_inside_running),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else if (state.contentSearchMatches.isNotEmpty()) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(170.dp)
+                            .padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(state.contentSearchMatches) { match ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onOpenBookAtLocation(match.bookId, match.pageIndex, match.chapterIndex)
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(
+                                        text = "${match.bookTitle} • ${match.locationLabel}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = match.snippet,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Smart Collections + Taxonomy Filter Chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
-                    selected = state.filterChip == LibraryFilterChip.ALL &&
+                val smartChips = listOf(
+                    LibraryFilterChip.ALL to R.string.library_filter_all,
+                    LibraryFilterChip.FAVORITES to R.string.library_filter_favorites,
+                    LibraryFilterChip.CURRENTLY_READING to R.string.library_status_currently_reading,
+                    LibraryFilterChip.UNREAD to R.string.library_smart_unread,
+                    LibraryFilterChip.FINISHED to R.string.library_status_finished,
+                    LibraryFilterChip.RECENTLY_OPENED to R.string.library_smart_recently_opened,
+                    LibraryFilterChip.RECENTLY_ADDED to R.string.library_smart_recently_added,
+                    LibraryFilterChip.ANNOTATED to R.string.library_smart_annotated
+                )
+                smartChips.forEach { (chip, labelRes) ->
+                    val isDefaultAll = chip == LibraryFilterChip.ALL &&
+                        state.filterChip == LibraryFilterChip.ALL &&
                         state.selectedCategoryId == null &&
                         state.selectedTagId == null &&
-                        state.selectedCollectionId == null,
-                    onClick = {
-                        onSelectFilterChip(LibraryFilterChip.ALL)
-                        onSelectCategory(null)
-                        onSelectTag(null)
-                        onSelectCollection(null)
-                    },
-                    label = { Text(stringResource(R.string.library_filter_all)) }
-                )
-                FilterChip(
-                    selected = state.filterChip == LibraryFilterChip.FAVORITES,
-                    onClick = {
-                        onSelectFilterChip(
-                            if (state.filterChip == LibraryFilterChip.FAVORITES) LibraryFilterChip.ALL else LibraryFilterChip.FAVORITES
-                        )
-                    },
-                    label = { Text(stringResource(R.string.library_filter_favorites)) }
-                )
+                        state.selectedCollectionId == null
+                    val selected = if (chip == LibraryFilterChip.ALL) isDefaultAll else state.filterChip == chip
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            if (chip == LibraryFilterChip.ALL) {
+                                onSelectFilterChip(LibraryFilterChip.ALL)
+                                onSelectCategory(null)
+                                onSelectTag(null)
+                                onSelectCollection(null)
+                            } else {
+                                onSelectFilterChip(if (state.filterChip == chip) LibraryFilterChip.ALL else chip)
+                            }
+                        },
+                        label = { Text(stringResource(labelRes)) }
+                    )
+                }
                 state.categories.forEach { cat ->
                     FilterChip(
                         selected = state.selectedCategoryId == cat.id,
@@ -356,7 +504,7 @@ fun LibraryScreen(
                                 relocatingBookId = item.book.id
                                 relocateLauncher.launch(DocumentFormat.safPickerMimeTypes)
                             },
-                            onDelete = { deletingBook = item }
+                            onMoveToTrash = { onSoftDeleteBook(item.book.id) }
                         )
                     }
                 }
@@ -382,7 +530,7 @@ fun LibraryScreen(
                                 relocatingBookId = item.book.id
                                 relocateLauncher.launch(DocumentFormat.safPickerMimeTypes)
                             },
-                            onDelete = { deletingBook = item }
+                            onMoveToTrash = { onSoftDeleteBook(item.book.id) }
                         )
                     }
                 }
@@ -390,14 +538,14 @@ fun LibraryScreen(
         }
     }
 
-    // Metadata Editor Dialog
     editingBook?.let { item ->
         EditBookMetadataDialog(
             item = item,
             allCategories = state.categories,
             allCollections = state.collections,
             onDismiss = { editingBook = null },
-            onCreateCollection = onCreateCollection,
+            onCreateCollection = { name -> onCreateCollection(name, "") },
+            onSetReadingStatus = { st -> onSetReadingStatus(item.book.id, st) },
             onChangeCover = {
                 coverTargetBookId = item.book.id
                 coverPickerLauncher.launch(
@@ -426,33 +574,47 @@ fun LibraryScreen(
         )
     }
 
-    // Delete Confirmation Dialog (never deletes original external file; gives option for notes)
-    deletingBook?.let { item ->
+    if (showManageCollectionsDialog) {
+        ManageCollectionsDialog(
+            collections = state.collections,
+            onDismiss = { showManageCollectionsDialog = false },
+            onCreateCollection = onCreateCollection,
+            onUpdateCollection = onUpdateCollection,
+            onDeleteCollection = onDeleteCollection
+        )
+    }
+
+    if (showTrashDialog) {
+        TrashBinDialog(
+            deletedBooks = state.deletedBooks,
+            onDismiss = { showTrashDialog = false },
+            onRestoreBook = onRestoreBookFromTrash,
+            onDeletePermanently = { book -> deletingBookForever = book }
+        )
+    }
+
+    deletingBookForever?.let { item ->
         AlertDialog(
-            onDismissRequest = { deletingBook = null },
+            onDismissRequest = { deletingBookForever = null },
             title = { Text(stringResource(R.string.library_delete_title)) },
             text = { Text(stringResource(R.string.library_delete_message, item.book.title)) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteBook(item.book.id, false)
-                        deletingBook = null
-                    }
-                ) {
+                TextButton(onClick = {
+                    onDeleteBookPermanently(item.book.id, false)
+                    deletingBookForever = null
+                }) {
                     Text(stringResource(R.string.library_delete_keep_notes))
                 }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { deletingBook = null }) {
+                    TextButton(onClick = { deletingBookForever = null }) {
                         Text(stringResource(R.string.action_cancel))
                     }
-                    TextButton(
-                        onClick = {
-                            onDeleteBook(item.book.id, true)
-                            deletingBook = null
-                        }
-                    ) {
+                    TextButton(onClick = {
+                        onDeleteBookPermanently(item.book.id, true)
+                        deletingBookForever = null
+                    }) {
                         Text(
                             stringResource(R.string.library_delete_remove_all),
                             color = MaterialTheme.colorScheme.error
@@ -463,7 +625,6 @@ fun LibraryScreen(
         )
     }
 
-    // Duplicate Resolution Dialog
     state.duplicateQueue.firstOrNull()?.let { dupe ->
         DuplicateResolutionDialog(
             duplicate = dupe,
@@ -491,7 +652,7 @@ private fun BookGridCard(
     onChangeCover: () -> Unit,
     onRestoreDefaultCover: () -> Unit,
     onRelocate: () -> Unit,
-    onDelete: () -> Unit
+    onMoveToTrash: () -> Unit
 ) {
     val book = item.book
     val format = DocumentFormat.fromName(book.formatName)
@@ -569,9 +730,12 @@ private fun BookGridCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${(book.readingProgress * 100).roundToInt()}%",
+                    text = "${(book.readingProgress * 100).roundToInt()}% • ${readingStatusLabel(book.resolvedReadingStatus())}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
                 Row {
                     IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
@@ -595,7 +759,7 @@ private fun BookGridCard(
                             onChangeCover = { menuExpanded = false; onChangeCover() },
                             onRestoreDefaultCover = { menuExpanded = false; onRestoreDefaultCover() },
                             onRelocate = { menuExpanded = false; onRelocate() },
-                            onDelete = { menuExpanded = false; onDelete() }
+                            onMoveToTrash = { menuExpanded = false; onMoveToTrash() }
                         )
                     }
                 }
@@ -613,7 +777,7 @@ private fun BookListCard(
     onChangeCover: () -> Unit,
     onRestoreDefaultCover: () -> Unit,
     onRelocate: () -> Unit,
-    onDelete: () -> Unit
+    onMoveToTrash: () -> Unit
 ) {
     val book = item.book
     val format = DocumentFormat.fromName(book.formatName)
@@ -662,7 +826,7 @@ private fun BookListCard(
                     )
                 }
                 Text(
-                    text = "${format.displayLabel} • ${formatFileSize(book.fileSizeBytes)} • ${(book.readingProgress * 100).roundToInt()}%",
+                    text = "${format.displayLabel} • ${formatFileSize(book.fileSizeBytes)} • ${(book.readingProgress * 100).roundToInt()}% • ${readingStatusLabel(book.resolvedReadingStatus())}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -697,11 +861,18 @@ private fun BookListCard(
                     onChangeCover = { menuExpanded = false; onChangeCover() },
                     onRestoreDefaultCover = { menuExpanded = false; onRestoreDefaultCover() },
                     onRelocate = { menuExpanded = false; onRelocate() },
-                    onDelete = { menuExpanded = false; onDelete() }
+                    onMoveToTrash = { menuExpanded = false; onMoveToTrash() }
                 )
             }
         }
     }
+}
+
+@Composable
+private fun readingStatusLabel(status: ReadingStatus): String = when (status) {
+    ReadingStatus.WANT_TO_READ -> stringResource(R.string.library_status_want_to_read)
+    ReadingStatus.CURRENTLY_READING -> stringResource(R.string.library_status_currently_reading)
+    ReadingStatus.FINISHED -> stringResource(R.string.library_status_finished)
 }
 
 @Composable
@@ -714,7 +885,7 @@ private fun BookActionsDropdown(
     onChangeCover: () -> Unit,
     onRestoreDefaultCover: () -> Unit,
     onRelocate: () -> Unit,
-    onDelete: () -> Unit
+    onMoveToTrash: () -> Unit
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
@@ -742,331 +913,9 @@ private fun BookActionsDropdown(
             )
         }
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
+            text = { Text(stringResource(R.string.library_move_to_trash), color = MaterialTheme.colorScheme.error) },
             leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            onClick = onDelete
+            onClick = onMoveToTrash
         )
     }
-}
-
-@Composable
-private fun EditBookMetadataDialog(
-    item: BookWithDetails,
-    allCategories: List<CategoryEntity>,
-    allCollections: List<CollectionEntity>,
-    onDismiss: () -> Unit,
-    onCreateCollection: (String) -> Unit,
-    onChangeCover: () -> Unit,
-    onRestoreDefaultCover: () -> Unit,
-    onSave: (String, String, String, String, String, String?, String, List<String>) -> Unit
-) {
-    var title by remember(item) { mutableStateOf(item.book.title) }
-    var author by remember(item) { mutableStateOf(item.book.author) }
-    var description by remember(item) { mutableStateOf(item.book.description) }
-    var publisher by remember(item) { mutableStateOf(item.book.publisher) }
-    var language by remember(item) { mutableStateOf(item.book.language) }
-    var category by remember(item) { mutableStateOf(item.category?.name.orEmpty()) }
-    var tagsCsv by remember(item) { mutableStateOf(item.tags.joinToString(", ") { it.name }) }
-    val selectedCollections = remember(item) {
-        mutableStateListOf<String>().apply { addAll(item.collections.map { it.id }) }
-    }
-    var newColName by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.library_edit_metadata)) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text(
-                            text = stringResource(R.string.library_original_filename),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = item.book.originalFilename,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(onClick = onChangeCover, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Rounded.Image, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.library_change_cover), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    if (!item.book.coverUri.isNullOrBlank()) {
-                        OutlinedButton(onClick = onRestoreDefaultCover, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Rounded.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(stringResource(R.string.library_restore_cover), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(R.string.library_field_title)) }, singleLine = true)
-                OutlinedTextField(value = author, onValueChange = { author = it }, label = { Text(stringResource(R.string.library_field_author)) }, singleLine = true)
-                OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text(stringResource(R.string.library_field_category)) }, singleLine = true)
-                if (allCategories.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        allCategories.forEach { cat ->
-                            FilterChip(
-                                selected = category.equals(cat.name, ignoreCase = true),
-                                onClick = {
-                                    category = if (category.equals(cat.name, ignoreCase = true)) "" else cat.name
-                                },
-                                label = { Text(cat.name) }
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(value = tagsCsv, onValueChange = { tagsCsv = it }, label = { Text(stringResource(R.string.library_field_tags)) }, singleLine = true)
-                OutlinedTextField(value = publisher, onValueChange = { publisher = it }, label = { Text(stringResource(R.string.library_field_publisher)) }, singleLine = true)
-                OutlinedTextField(value = language, onValueChange = { language = it }, label = { Text(stringResource(R.string.library_field_language)) }, singleLine = true)
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text(stringResource(R.string.library_field_description)) }, minLines = 2, maxLines = 4)
-
-                Text(
-                    text = stringResource(R.string.library_manage_collections),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                allCollections.forEach { col ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (col.id in selectedCollections) selectedCollections.remove(col.id)
-                                else selectedCollections.add(col.id)
-                            }
-                    ) {
-                        Checkbox(
-                            checked = col.id in selectedCollections,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    if (col.id !in selectedCollections) selectedCollections.add(col.id)
-                                } else selectedCollections.remove(col.id)
-                            }
-                        )
-                        Text(col.name, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedTextField(
-                        value = newColName,
-                        onValueChange = { newColName = it },
-                        placeholder = { Text(stringResource(R.string.library_collection_name_hint)) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = {
-                        if (newColName.isNotBlank()) {
-                            onCreateCollection(newColName)
-                            newColName = ""
-                        }
-                    }) {
-                        Text(stringResource(R.string.library_new_collection))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = {
-                onSave(title, author, description, publisher, language, category.ifBlank { null }, tagsCsv, selectedCollections.toList())
-            }) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        }
-    )
-}
-
-@Composable
-private fun ManageCategoriesDialog(
-    categories: List<CategoryEntity>,
-    onDismiss: () -> Unit,
-    onCreateCategory: (String) -> Unit,
-    onRenameCategory: (String, String) -> Unit,
-    onDeleteCategory: (String) -> Unit
-) {
-    var newCategoryName by remember { mutableStateOf("") }
-    var renamingCategory by remember { mutableStateOf<CategoryEntity?>(null) }
-    var renameInput by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.library_manage_categories)) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.library_manage_categories_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    OutlinedTextField(
-                        value = newCategoryName,
-                        onValueChange = { newCategoryName = it },
-                        placeholder = { Text(stringResource(R.string.library_category_name_hint)) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Button(
-                        onClick = {
-                            onCreateCategory(newCategoryName)
-                            newCategoryName = ""
-                        },
-                        enabled = newCategoryName.isNotBlank()
-                    ) {
-                        Text(stringResource(R.string.library_new_category))
-                    }
-                }
-                if (categories.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.library_no_categories),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    categories.forEach { cat ->
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = cat.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(onClick = {
-                                    renamingCategory = cat
-                                    renameInput = cat.name
-                                }) {
-                                    Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.action_edit))
-                                }
-                                IconButton(onClick = { onDeleteCategory(cat.id) }) {
-                                    Icon(
-                                        Icons.Rounded.Delete,
-                                        contentDescription = stringResource(R.string.action_delete),
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onDismiss) {
-                Text(stringResource(R.string.action_close))
-            }
-        }
-    )
-
-    renamingCategory?.let { target ->
-        AlertDialog(
-            onDismissRequest = { renamingCategory = null },
-            title = { Text(stringResource(R.string.library_rename_category)) },
-            text = {
-                OutlinedTextField(
-                    value = renameInput,
-                    onValueChange = { renameInput = it },
-                    label = { Text(stringResource(R.string.library_field_category)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onRenameCategory(target.id, renameInput)
-                        renamingCategory = null
-                    },
-                    enabled = renameInput.isNotBlank()
-                ) {
-                    Text(stringResource(R.string.action_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { renamingCategory = null }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun DuplicateResolutionDialog(
-    duplicate: DuplicatePromptState,
-    onSkip: () -> Unit,
-    onKeepBoth: () -> Unit,
-    onReplaceUri: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onSkip,
-        title = { Text(stringResource(R.string.library_duplicate_title)) },
-        text = {
-            Text(
-                stringResource(
-                    R.string.library_duplicate_message,
-                    duplicate.candidateBook.originalFilename,
-                    duplicate.existingBook.title
-                )
-            )
-        },
-        confirmButton = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Button(onClick = onReplaceUri, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.library_duplicate_replace_uri))
-                }
-                OutlinedButton(onClick = onKeepBoth, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.library_duplicate_keep_both))
-                }
-                TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.library_duplicate_skip))
-                }
-            }
-        }
-    )
 }

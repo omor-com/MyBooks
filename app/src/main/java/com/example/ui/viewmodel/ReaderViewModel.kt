@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.util.LruCache
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.audio.PageTurnSoundManager
@@ -22,9 +23,16 @@ import com.example.data.reader.DocumentValidator
 import com.example.data.reader.EpubBookContent
 import com.example.data.reader.EpubParser
 import com.example.data.reader.ExtendedDocumentParser
+import com.example.data.reader.OfflineOcrHelper
+import com.example.data.reader.PdfTextExtractor
+import com.example.data.reader.TextBlock
+import com.example.data.reader.TtsReadAloudManager
+import com.example.data.reader.TtsUiState
 import com.example.data.repository.LibraryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -64,7 +72,7 @@ sealed interface ReaderContentState {
 
     data class ImageCollectionReady(
         val book: BookEntity,
-        val imageEntries: List<String>, // empty for single image URI
+        val imageEntries: List<String>,
         val currentPage: Int,
         val isSingleImage: Boolean
     ) : ReaderContentState
@@ -80,7 +88,8 @@ sealed interface ReaderContentState {
 data class ReaderSearchMatch(
     val sectionIndex: Int,
     val sectionTitle: String,
-    val snippet: String
+    val snippet: String,
+    val isPdfPageMatch: Boolean = false
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -92,7 +101,8 @@ class ReaderViewModel(
     private val initialChapterOverride: Int?,
     private val libraryRepository: LibraryRepository,
     private val preferencesRepository: UserPreferencesRepository,
-    private val soundManager: PageTurnSoundManager
+    private val soundManager: PageTurnSoundManager,
+    private val ttsManager: TtsReadAloudManager
 ) : ViewModel() {
 
     private val _activeBookId = MutableStateFlow(bookId)
@@ -107,11 +117,28 @@ class ReaderViewModel(
     private val _searchResults = MutableStateFlow<List<ReaderSearchMatch>>(emptyList())
     val searchResults: StateFlow<List<ReaderSearchMatch>> = _searchResults.asStateFlow()
 
+    private val _isSearchingDocument = MutableStateFlow(false)
+    val isSearchingDocument: StateFlow<Boolean> = _isSearchingDocument.asStateFlow()
+
     private val _currentBitmap = MutableStateFlow<Bitmap?>(null)
     val currentBitmap: StateFlow<Bitmap?> = _currentBitmap.asStateFlow()
 
+    private val _pdfPageBitmaps = MutableStateFlow<Map<Int, Bitmap>>(emptyMap())
+    val pdfPageBitmaps: StateFlow<Map<Int, Bitmap>> = _pdfPageBitmaps.asStateFlow()
+
+    private val _ocrTextByPage = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val ocrTextByPage: StateFlow<Map<Int, String>> = _ocrTextByPage.asStateFlow()
+
+    private val _isRunningOcr = MutableStateFlow(false)
+    val isRunningOcr: StateFlow<Boolean> = _isRunningOcr.asStateFlow()
+
+    private val _ocrProgressPage = MutableStateFlow(0)
+    val ocrProgressPage: StateFlow<Int> = _ocrProgressPage.asStateFlow()
+
     private val _readerMessages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val readerMessages = _readerMessages.asSharedFlow()
+
+    val ttsState: StateFlow<TtsUiState> = ttsManager.state
 
     val preferences: StateFlow<UserPreferences> = preferencesRepository.preferencesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), UserPreferences())
@@ -135,9 +162,14 @@ class ReaderViewModel(
     private var pdfPfd: ParcelFileDescriptor? = null
     private var pdfRenderer: PdfRenderer? = null
     private val pdfMutex = Mutex()
+    private val pdfCache = object : LruCache<Int, Bitmap>(6) {}
     private var loadedBook: BookEntity? = null
     private var activeExternalUri: Uri? = externalUri?.takeIf { it.isNotBlank() }?.let(Uri::parse)
     private var latestScrollOffset: Int = 0
+    private var ocrJob: Job? = null
+    private var sessionStartEpochMs: Long = System.currentTimeMillis()
+    private var pagesTurnedInSession: Int = 0
+    private var lastTrackedPositionKey: String = ""
 
     init {
         soundManager.preloadIfReadyAsync()
@@ -147,7 +179,11 @@ class ReaderViewModel(
     fun loadDocument() {
         viewModelScope.launch {
             _contentState.value = ReaderContentState.Loading
+            _ocrTextByPage.value = emptyMap()
+            _searchResults.value = emptyList()
             closePdfResources()
+            sessionStartEpochMs = System.currentTimeMillis()
+            pagesTurnedInSession = 0
 
             val targetBookId = _activeBookId.value
             if (targetBookId.isNotBlank()) {
@@ -274,8 +310,9 @@ class ReaderViewModel(
             pdfRenderer = renderer
             val clampedPage = initialPage.coerceIn(0, renderer.pageCount - 1)
             latestScrollOffset = 0
+            lastTrackedPositionKey = "pdf:$clampedPage"
             _contentState.value = ReaderContentState.PdfReady(book, renderer.pageCount, clampedPage)
-            renderPdfPage(clampedPage)
+            renderPdfPage(clampedPage, targetWidth = 1440)
             persistProgress(
                 progress = (clampedPage + 1).toFloat() / renderer.pageCount.toFloat(),
                 pageIndex = clampedPage,
@@ -301,18 +338,42 @@ class ReaderViewModel(
         }
     }
 
-    private suspend fun renderPdfPage(pageIndex: Int) = withContext(Dispatchers.IO) {
+    private suspend fun renderPdfPageInternal(pageIndex: Int, targetWidth: Int): Bitmap? = withContext(Dispatchers.IO) {
         pdfMutex.withLock {
-            val renderer = pdfRenderer ?: return@withLock
-            if (pageIndex !in 0 until renderer.pageCount) return@withLock
+            pdfCache.get(pageIndex)?.let { cached ->
+                if (!cached.isRecycled) return@withLock cached
+            }
+            val renderer = pdfRenderer ?: return@withLock null
+            if (pageIndex !in 0 until renderer.pageCount) return@withLock null
             renderer.openPage(pageIndex).use { page ->
-                val targetWidth = 1440
                 val scale = targetWidth.toFloat() / page.width.coerceAtLeast(1)
                 val targetHeight = (page.height * scale).toInt().coerceIn(200, 3200)
                 val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
                 bitmap.eraseColor(android.graphics.Color.WHITE)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                _currentBitmap.value = bitmap
+                pdfCache.put(pageIndex, bitmap)
+                publishPdfBitmapCache()
+                bitmap
+            }
+        }
+    }
+
+    private fun publishPdfBitmapCache() {
+        val snapshot = pdfCache.snapshot()
+        _pdfPageBitmaps.value = snapshot.filterValues { !it.isRecycled }
+    }
+
+    private suspend fun renderPdfPage(pageIndex: Int, targetWidth: Int = 1440) {
+        val bmp = renderPdfPageInternal(pageIndex, targetWidth)
+        if (bmp != null) {
+            _currentBitmap.value = bmp
+        }
+    }
+
+    fun requestPdfPageBitmap(pageIndex: Int) {
+        viewModelScope.launch {
+            if (pdfCache.get(pageIndex) == null) {
+                renderPdfPageInternal(pageIndex, targetWidth = 1280)
             }
         }
     }
@@ -322,12 +383,17 @@ class ReaderViewModel(
         val clamped = pageIndex.coerceIn(0, state.pageCount - 1)
         if (clamped == state.currentPage) return
 
+        val key = "pdf:$clamped"
+        if (key != lastTrackedPositionKey) {
+            lastTrackedPositionKey = key
+            pagesTurnedInSession++
+        }
         if (playSound) {
             soundManager.playPageTurnIfEnabled(preferences.value.pageTurnSoundEnabled)
         }
         _contentState.value = state.copy(currentPage = clamped)
         viewModelScope.launch {
-            renderPdfPage(clamped)
+            renderPdfPage(clamped, targetWidth = 1440)
             persistProgress(
                 progress = (clamped + 1).toFloat() / state.pageCount.toFloat(),
                 pageIndex = clamped,
@@ -348,6 +414,7 @@ class ReaderViewModel(
             EpubParser.parse(appContext.contentResolver, uri).onSuccess { epub ->
                 val clamped = initialChapter.coerceIn(0, (epub.chapters.size - 1).coerceAtLeast(0))
                 latestScrollOffset = initialScroll.coerceAtLeast(0)
+                lastTrackedPositionKey = "epub:$clamped"
                 _contentState.value = ReaderContentState.EpubReady(book, epub, clamped, latestScrollOffset)
                 persistProgress(
                     progress = (clamped + 1).toFloat() / epub.chapters.size.coerceAtLeast(1).toFloat(),
@@ -371,6 +438,7 @@ class ReaderViewModel(
         val state = _contentState.value as? ReaderContentState.EpubReady ?: return
         val clamped = chapterIndex.coerceIn(0, (state.content.chapters.size - 1).coerceAtLeast(0))
         if (clamped == state.currentChapter) return
+        pagesTurnedInSession++
         if (playSound) {
             soundManager.playPageTurnIfEnabled(preferences.value.pageTurnSoundEnabled)
         }
@@ -400,6 +468,7 @@ class ReaderViewModel(
             .onSuccess { parsed ->
                 val clamped = initialSection.coerceIn(0, (parsed.sections.size - 1).coerceAtLeast(0))
                 latestScrollOffset = initialScroll.coerceAtLeast(0)
+                lastTrackedPositionKey = "txt:$clamped"
                 _contentState.value = ReaderContentState.TextDocumentReady(book, parsed.sections, clamped, latestScrollOffset)
                 val total = parsed.sections.size.coerceAtLeast(1)
                 persistProgress(
@@ -425,6 +494,7 @@ class ReaderViewModel(
         val state = _contentState.value as? ReaderContentState.TextDocumentReady ?: return
         val clamped = sectionIndex.coerceIn(0, (state.sections.size - 1).coerceAtLeast(0))
         if (clamped == state.currentSection) return
+        pagesTurnedInSession++
         if (playSound) {
             soundManager.playPageTurnIfEnabled(preferences.value.pageTurnSoundEnabled)
         }
@@ -447,6 +517,7 @@ class ReaderViewModel(
         ComicAndImageLoader.listCbzEntries(appContext.contentResolver, uri).onSuccess { entries ->
             val clamped = initialPage.coerceIn(0, entries.size - 1)
             latestScrollOffset = 0
+            lastTrackedPositionKey = "cbz:$clamped"
             _contentState.value = ReaderContentState.ImageCollectionReady(book, entries, clamped, isSingleImage = false)
             _currentBitmap.value = ComicAndImageLoader.loadCbzPageBitmap(appContext.contentResolver, uri, entries[clamped])
             persistProgress(
@@ -490,6 +561,7 @@ class ReaderViewModel(
         val clamped = pageIndex.coerceIn(0, state.imageEntries.size - 1)
         if (clamped == state.currentPage) return
 
+        pagesTurnedInSession++
         if (playSound) {
             soundManager.playPageTurnIfEnabled(preferences.value.pageTurnSoundEnabled)
         }
@@ -516,9 +588,12 @@ class ReaderViewModel(
         latestScrollOffset = itemIndex.coerceAtLeast(0)
     }
 
-    fun flushCurrentPosition() {
+    fun recordExplicitPageTurnInReflowable() {
+        pagesTurnedInSession++
+    }
+
+    fun flushCurrentPosition(recordSession: Boolean = false) {
         val targetId = _activeBookId.value
-        if (targetId.isBlank()) return
         val progressData = when (val st = _contentState.value) {
             is ReaderContentState.PdfReady -> ReadingPositionSnapshot(
                 progress = (st.currentPage + 1).toFloat() / st.pageCount.coerceAtLeast(1),
@@ -553,18 +628,178 @@ class ReaderViewModel(
                 scrollOffset = 0
             )
             else -> null
-        } ?: return
+        }
+
+        val now = System.currentTimeMillis()
+        val elapsedSeconds = ((now - sessionStartEpochMs) / 1000L).toInt()
+        val shouldRecordSession = recordSession && elapsedSeconds >= 15
+        if (shouldRecordSession) {
+            sessionStartEpochMs = now
+        }
+        val turnedPages = pagesTurnedInSession
+        if (shouldRecordSession) {
+            pagesTurnedInSession = 0
+        }
 
         viewModelScope.launch {
-            persistProgress(
-                progress = progressData.progress,
-                pageIndex = progressData.pageIndex,
-                totalPages = progressData.totalPages,
-                chapterIndex = progressData.chapterIndex,
-                totalChapters = progressData.totalChapters,
-                scrollOffset = progressData.scrollOffset
-            )
+            if (progressData != null && targetId.isNotBlank()) {
+                persistProgress(
+                    progress = progressData.progress,
+                    pageIndex = progressData.pageIndex,
+                    totalPages = progressData.totalPages,
+                    chapterIndex = progressData.chapterIndex,
+                    totalChapters = progressData.totalChapters,
+                    scrollOffset = progressData.scrollOffset
+                )
+            }
+            if (shouldRecordSession && loadedBook != null) {
+                libraryRepository.recordReadingSession(
+                    bookId = targetId.ifBlank { null },
+                    bookTitle = loadedBook?.title.orEmpty(),
+                    durationSeconds = elapsedSeconds,
+                    pagesRead = turnedPages,
+                    startedAtEpochMs = now - elapsedSeconds * 1000L,
+                    endedAtEpochMs = now,
+                    isFocusTimer = false
+                )
+            }
         }
+    }
+
+    // --- Read Aloud (TTS) ---
+    fun startReadAloudFromCurrentLocation(missingPdfTextMessage: String) {
+        when (val st = _contentState.value) {
+            is ReaderContentState.EpubReady -> {
+                val chapter = st.content.chapters.getOrNull(st.currentChapter) ?: return
+                val chunks = chapter.paragraphs.drop(latestScrollOffset.coerceAtLeast(0))
+                    .map { extractBlockText(it) }
+                    .ifEmpty { chapter.paragraphs.map { extractBlockText(it) } }
+                ttsManager.speakChunks(
+                    paragraphs = chunks,
+                    languageTag = st.book.language.ifBlank { preferences.value.appLanguage },
+                    onFinishedAll = {
+                        if (st.currentChapter + 1 < st.content.chapters.size) {
+                            goToEpubChapter(st.currentChapter + 1, playSound = false)
+                        }
+                    }
+                )
+            }
+            is ReaderContentState.TextDocumentReady -> {
+                val section = st.sections.getOrNull(st.currentSection) ?: return
+                val chunks = section.blocks.drop(latestScrollOffset.coerceAtLeast(0))
+                    .map { extractBlockText(it) }
+                    .ifEmpty { section.blocks.map { extractBlockText(it) } }
+                ttsManager.speakChunks(
+                    paragraphs = chunks,
+                    languageTag = st.book.language.ifBlank { preferences.value.appLanguage },
+                    onFinishedAll = {
+                        if (st.currentSection + 1 < st.sections.size) {
+                            goToTextSection(st.currentSection + 1, playSound = false)
+                        }
+                    }
+                )
+            }
+            is ReaderContentState.PdfReady -> {
+                val ocrText = _ocrTextByPage.value[st.currentPage].orEmpty()
+                if (ocrText.isNotBlank()) {
+                    val chunks = ocrText.split(Regex("\n+")).filter { it.isNotBlank() }
+                    ttsManager.speakChunks(chunks, languageTag = st.book.language.ifBlank { preferences.value.appLanguage })
+                    return
+                }
+                viewModelScope.launch {
+                    val extracted = withContext(Dispatchers.IO) {
+                        PdfTextExtractor.extractAllTextChunks(appContext.contentResolver, Uri.parse(st.book.fileUri))
+                    }
+                    val pageText = extracted.getOrNull(st.currentPage)?.text
+                        ?: extracted.firstOrNull()?.text.orEmpty()
+                    if (pageText.isBlank()) {
+                        _readerMessages.emit(missingPdfTextMessage)
+                    } else {
+                        val chunks = pageText.split(Regex("\n+")).filter { it.isNotBlank() }
+                        ttsManager.speakChunks(chunks, languageTag = st.book.language.ifBlank { preferences.value.appLanguage })
+                    }
+                }
+            }
+            is ReaderContentState.ImageCollectionReady -> {
+                val ocrText = _ocrTextByPage.value[st.currentPage].orEmpty()
+                if (ocrText.isBlank()) {
+                    viewModelScope.launch { _readerMessages.emit(missingPdfTextMessage) }
+                } else {
+                    ttsManager.speakChunks(
+                        ocrText.split(Regex("\n+")).filter { it.isNotBlank() },
+                        languageTag = st.book.language.ifBlank { preferences.value.appLanguage }
+                    )
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    fun toggleTtsPlayPause(missingPdfTextMessage: String) {
+        val st = ttsManager.state.value
+        when {
+            st.isPlaying -> ttsManager.pause()
+            st.isPaused -> ttsManager.resume()
+            else -> startReadAloudFromCurrentLocation(missingPdfTextMessage)
+        }
+    }
+
+    fun stopReadAloud() = ttsManager.stop()
+    fun setTtsRate(rate: Float) = ttsManager.setSpeechRate(rate)
+    fun ttsNextChunk() = ttsManager.skipNext()
+    fun ttsPreviousChunk() = ttsManager.skipPrevious()
+
+    // --- Offline OCR (ML Kit Latin) ---
+    fun runOcr(wholeBookLimited: Boolean = false) {
+        ocrJob?.cancel()
+        ocrJob = viewModelScope.launch {
+            _isRunningOcr.value = true
+            try {
+                when (val st = _contentState.value) {
+                    is ReaderContentState.PdfReady -> {
+                        val endPage = if (wholeBookLimited) {
+                            minOf(st.pageCount - 1, st.currentPage + 19)
+                        } else {
+                            st.currentPage
+                        }
+                        for (pageIdx in st.currentPage..endPage) {
+                            _ocrProgressPage.value = pageIdx + 1
+                            val bmp = renderPdfPageInternal(pageIdx, targetWidth = 1440) ?: continue
+                            val result = OfflineOcrHelper.recognizeBitmap(bmp, pageIdx)
+                            if (result.isSuccess && result.text.isNotBlank()) {
+                                _ocrTextByPage.value = _ocrTextByPage.value + (pageIdx to result.text)
+                            } else if (!result.isSuccess && !result.errorMessage.isNullOrBlank()) {
+                                _readerMessages.emit(result.errorMessage)
+                                break
+                            }
+                        }
+                    }
+                    is ReaderContentState.ImageCollectionReady -> {
+                        _ocrProgressPage.value = st.currentPage + 1
+                        val bmp = _currentBitmap.value
+                        if (bmp != null) {
+                            val result = OfflineOcrHelper.recognizeBitmap(bmp, st.currentPage)
+                            if (result.isSuccess && result.text.isNotBlank()) {
+                                _ocrTextByPage.value = _ocrTextByPage.value + (st.currentPage to result.text)
+                            } else if (!result.isSuccess && !result.errorMessage.isNullOrBlank()) {
+                                _readerMessages.emit(result.errorMessage)
+                            }
+                        }
+                    }
+                    else -> Unit
+                }
+            } finally {
+                _isRunningOcr.value = false
+                _ocrProgressPage.value = 0
+            }
+        }
+    }
+
+    fun cancelOcr() {
+        ocrJob?.cancel()
+        ocrJob = null
+        _isRunningOcr.value = false
+        _ocrProgressPage.value = 0
     }
 
     fun saveExternalBookToLibrary(title: String, author: String, categoryName: String?) {
@@ -611,9 +846,9 @@ class ReaderViewModel(
             _searchResults.value = emptyList()
             return
         }
-        val matches = mutableListOf<ReaderSearchMatch>()
         when (val st = _contentState.value) {
             is ReaderContentState.EpubReady -> {
+                val matches = mutableListOf<ReaderSearchMatch>()
                 st.content.chapters.forEachIndexed { idx, ch ->
                     ch.paragraphs.forEach { block ->
                         val text = extractBlockText(block)
@@ -622,8 +857,10 @@ class ReaderViewModel(
                         }
                     }
                 }
+                _searchResults.value = matches
             }
             is ReaderContentState.TextDocumentReady -> {
+                val matches = mutableListOf<ReaderSearchMatch>()
                 st.sections.forEachIndexed { idx, sec ->
                     sec.blocks.forEach { block ->
                         val text = extractBlockText(block)
@@ -632,18 +869,41 @@ class ReaderViewModel(
                         }
                     }
                 }
+                _searchResults.value = matches
             }
-            else -> Unit
+            is ReaderContentState.PdfReady -> {
+                viewModelScope.launch {
+                    _isSearchingDocument.value = true
+                    val hits = withContext(Dispatchers.IO) {
+                        PdfTextExtractor.searchPdfText(
+                            contentResolver = appContext.contentResolver,
+                            uri = Uri.parse(st.book.fileUri),
+                            query = clean,
+                            ocrFallbackCache = _ocrTextByPage.value,
+                            maxHits = 40
+                        )
+                    }
+                    _searchResults.value = hits.map { hit ->
+                        ReaderSearchMatch(
+                            sectionIndex = hit.pageIndex.coerceIn(0, st.pageCount - 1),
+                            sectionTitle = "Page ${hit.pageIndex + 1}",
+                            snippet = hit.snippet,
+                            isPdfPageMatch = true
+                        )
+                    }
+                    _isSearchingDocument.value = false
+                }
+            }
+            else -> _searchResults.value = emptyList()
         }
-        _searchResults.value = matches
     }
 
-    private fun extractBlockText(block: com.example.data.reader.TextBlock): String = when (block) {
-        is com.example.data.reader.TextBlock.Heading -> block.text
-        is com.example.data.reader.TextBlock.Paragraph -> block.text
-        is com.example.data.reader.TextBlock.Quote -> block.text
-        is com.example.data.reader.TextBlock.Code -> block.text
-        is com.example.data.reader.TextBlock.BulletItem -> block.text
+    private fun extractBlockText(block: TextBlock): String = when (block) {
+        is TextBlock.Heading -> block.text
+        is TextBlock.Paragraph -> block.text
+        is TextBlock.Quote -> block.text
+        is TextBlock.Code -> block.text
+        is TextBlock.BulletItem -> block.text
     }
 
     fun addCurrentLocationBookmark(customTitle: String? = null) {
@@ -682,7 +942,7 @@ class ReaderViewModel(
         }
     }
 
-    fun addHighlight(selectedText: String) {
+    fun addHighlight(selectedText: String, colorHex: String = "#FFB703") {
         val book = loadedBook ?: return
         if (book.id.isBlank() || selectedText.isBlank()) return
         viewModelScope.launch {
@@ -694,7 +954,8 @@ class ReaderViewModel(
                 locatorJson = """{"page":$pageIdx,"chapter":$chapIdx}""",
                 locatorDisplay = display,
                 pageIndex = pageIdx,
-                chapterIndex = chapIdx
+                chapterIndex = chapIdx,
+                colorHex = colorHex
             )
         }
     }
@@ -748,6 +1009,8 @@ class ReaderViewModel(
     }
 
     private fun closePdfResources() {
+        pdfCache.evictAll()
+        _pdfPageBitmaps.value = emptyMap()
         try {
             pdfRenderer?.close()
         } catch (_: Exception) {
@@ -762,6 +1025,24 @@ class ReaderViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        cancelOcr()
+        ttsManager.stop()
+        val now = System.currentTimeMillis()
+        val elapsed = ((now - sessionStartEpochMs) / 1000L).toInt()
+        val book = loadedBook
+        if (elapsed >= 15 && book != null) {
+            kotlinx.coroutines.CoroutineScope(NonCancellable + Dispatchers.IO).launch {
+                libraryRepository.recordReadingSession(
+                    bookId = _activeBookId.value.ifBlank { null },
+                    bookTitle = book.title,
+                    durationSeconds = elapsed,
+                    pagesRead = pagesTurnedInSession,
+                    startedAtEpochMs = now - elapsed * 1000L,
+                    endedAtEpochMs = now,
+                    isFocusTimer = false
+                )
+            }
+        }
         closePdfResources()
     }
 

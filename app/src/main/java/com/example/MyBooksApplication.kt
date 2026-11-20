@@ -7,6 +7,7 @@ import com.example.data.backup.BackupManager
 import com.example.data.community.CommunityRepository
 import com.example.data.local.MyBooksDatabase
 import com.example.data.preferences.UserPreferencesRepository
+import com.example.data.reader.TtsReadAloudManager
 import com.example.data.repository.LibraryRepository
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -38,6 +39,7 @@ class AppContainer(application: Application) {
         context = application,
         preferencesRepository = preferencesRepository
     )
+    val ttsReadAloudManager = TtsReadAloudManager(application)
     val backupManager = BackupManager(
         context = application,
         database = database,

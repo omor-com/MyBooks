@@ -173,6 +173,18 @@ class PageTurnSoundManager(
         }
     }
 
+    fun forceRedownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        val target = soundFile()
+        if (target.exists()) target.delete()
+        loadedSoundId = 0
+        isSoundLoaded = false
+        pendingPlayOnLoad = false
+        _downloadState.value = SoundDownloadState.NotDownloaded
+        startDownload()
+    }
+
     fun playPageTurnIfEnabled(isEnabled: Boolean) {
         if (!isEnabled) return
         val now = SystemClock.uptimeMillis()

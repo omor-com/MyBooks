@@ -4,18 +4,20 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -29,6 +31,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Storefront
@@ -52,11 +55,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -66,11 +70,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
 import com.example.R
 import com.example.data.audio.SoundDownloadState
+import com.example.data.preferences.TapZoneMode
 import com.example.ui.components.formatFileSize
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.theme.ReaderThemeMode
 import com.example.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +94,10 @@ fun SettingsScreen(
     val prefs by viewModel.preferences.collectAsStateWithLifecycle()
     val soundState by viewModel.soundDownloadState.collectAsStateWithLifecycle()
     val storageStats by viewModel.storageStats.collectAsStateWithLifecycle()
+    val streakSummary by viewModel.streakSummary.collectAsStateWithLifecycle()
+    val sessions by viewModel.readingSessions.collectAsStateWithLifecycle()
+    val focusTimerState by viewModel.focusTimerState.collectAsStateWithLifecycle()
+    var showPrivacyDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { msg ->
@@ -97,9 +109,11 @@ fun SettingsScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("settings_screen"),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text(stringResource(R.string.settings_title), fontWeight = FontWeight.Bold) }
             )
         }
@@ -164,6 +178,31 @@ fun SettingsScreen(
                 }
             }
 
+            // Reading Goals, Calendar, Focus Timer & Reminders
+            item {
+                ReadingProductivitySection(
+                    prefs = prefs,
+                    streakSummary = streakSummary,
+                    sessions = sessions,
+                    focusTimerState = focusTimerState,
+                    onSetDailyGoal = viewModel::setDailyReadingGoalMinutes,
+                    onSetReadingSpeedWpm = viewModel::setReadingSpeedWpm,
+                    onSetBreakMinutes = viewModel::setBreakReminderMinutes,
+                    onSetReminder = { enabled, hour, minute ->
+                        viewModel.setReminderSettings(context, enabled, hour, minute)
+                    },
+                    onPermissionDenied = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(context.getString(R.string.settings_notification_denied))
+                        }
+                    },
+                    onStartFocus = { viewModel.startFocusTimer() },
+                    onPauseFocus = viewModel::pauseFocusTimer,
+                    onResumeFocus = viewModel::resumeFocusTimer,
+                    onStopFocus = viewModel::stopAndSaveFocusTimer
+                )
+            }
+
             // Reading Preferences & Page-Turn Sound
             item {
                 SettingsSectionCard(
@@ -187,6 +226,27 @@ fun SettingsScreen(
                         }
                     }
 
+                    Text(stringResource(R.string.reader_tap_zones), style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            TapZoneMode.STANDARD to R.string.reader_tap_standard,
+                            TapZoneMode.LEFT_HANDED to R.string.reader_tap_left_handed,
+                            TapZoneMode.SIMPLE_CENTER to R.string.reader_tap_center_only,
+                            TapZoneMode.OFF to R.string.reader_tap_off
+                        ).forEach { (zone, resId) ->
+                            FilterChip(
+                                selected = prefs.readerTapZoneMode == zone,
+                                onClick = { viewModel.setTapZoneMode(zone) },
+                                label = { Text(stringResource(resId), maxLines = 1) }
+                            )
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -203,6 +263,15 @@ fun SettingsScreen(
                     ) {
                         Text(stringResource(R.string.reader_keep_screen_on), style = MaterialTheme.typography.bodyLarge)
                         Switch(checked = prefs.readerKeepScreenOn, onCheckedChange = { viewModel.setKeepScreenOn(it) })
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(stringResource(R.string.reader_reduced_animation), style = MaterialTheme.typography.bodyLarge)
+                        Switch(checked = prefs.readerReducedAnimation, onCheckedChange = { viewModel.setReducedAnimation(it) })
                     }
 
                     HorizontalDivider(Modifier.padding(vertical = 4.dp))
@@ -270,6 +339,16 @@ fun SettingsScreen(
                                     modifier = Modifier.testTag("settings_sound_enable_switch")
                                 )
                             }
+                            OutlinedButton(
+                                onClick = { viewModel.redownloadPageTurnSound() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("settings_redownload_sound_button")
+                            ) {
+                                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.settings_redownload_sound))
+                            }
                         }
                         is SoundDownloadState.Error -> {
                             Text(
@@ -294,6 +373,12 @@ fun SettingsScreen(
 
             // Backup & Restore (Located ONLY inside Settings)
             item {
+                val lastBackupText = if (prefs.lastBackupEpochMs > 0L) {
+                    val dateStr = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(prefs.lastBackupEpochMs))
+                    stringResource(R.string.settings_last_backup_at, dateStr, prefs.lastBackupSummary.ifBlank { "ZIP" })
+                } else {
+                    stringResource(R.string.settings_last_backup_none)
+                }
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -315,7 +400,7 @@ fun SettingsScreen(
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp)
                         )
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = stringResource(R.string.settings_section_backup),
                                 style = MaterialTheme.typography.titleMedium,
@@ -326,13 +411,18 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            Text(
+                                text = lastBackupText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null)
                     }
                 }
             }
 
-            // Storage Management
+            // Granular Storage Breakdown
             item {
                 SettingsSectionCard(
                     icon = Icons.Rounded.Storage,
@@ -345,6 +435,21 @@ fun SettingsScreen(
                             formatFileSize(storageStats.totalBookBytes)
                         ),
                         style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_storage_breakdown_books, formatFileSize(storageStats.breakdown.importedBooksBytes)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_storage_breakdown_covers, formatFileSize(storageStats.breakdown.coversBytes)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_storage_breakdown_audio, formatFileSize(storageStats.breakdown.audioBytes)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = stringResource(R.string.settings_storage_cache_info, formatFileSize(storageStats.cacheBytes)),
@@ -370,7 +475,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Privacy & Security
+            // Privacy Dashboard (No PIN or Biometric Lock)
             item {
                 SettingsSectionCard(
                     icon = Icons.Rounded.Security,
@@ -381,6 +486,12 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    OutlinedButton(
+                        onClick = { showPrivacyDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.settings_privacy_dashboard))
+                    }
                 }
             }
 
@@ -449,31 +560,8 @@ fun SettingsScreen(
             }
         }
     }
-}
 
-@Composable
-private fun SettingsSectionCard(
-    icon: ImageVector,
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            content()
-        }
+    if (showPrivacyDialog) {
+        PrivacyDetailsDialog(onDismiss = { showPrivacyDialog = false })
     }
 }

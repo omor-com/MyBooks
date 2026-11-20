@@ -133,6 +133,7 @@ data class CommunityPost(
     val content: String = "",
     val driveLink: String = "",
     val bookTitle: String = "",
+    val likeCount: Long = 0L,
     val visibility: String = PostVisibility.VISIBLE.firestoreValue,
     val moderationNote: String = "",
     @ServerTimestamp val createdAt: Timestamp? = null,
@@ -141,6 +142,24 @@ data class CommunityPost(
     val badge: BadgeType get() = BadgeType.fromRaw(authorBadge)
     val postVisibility: PostVisibility get() = PostVisibility.fromRaw(visibility)
 }
+
+@Keep
+@IgnoreExtraProperties
+data class PostReaction(
+    @DocumentId val id: String = "",
+    val uid: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null
+)
+
+@Keep
+@IgnoreExtraProperties
+data class BlockedUserEntry(
+    @DocumentId val id: String = "",
+    val blockedUid: String = "",
+    val displayName: String = "",
+    val photoUrl: String = CommunityConstants.DEFAULT_USER_AVATAR_URL,
+    @ServerTimestamp val createdAt: Timestamp? = null
+)
 
 @Keep
 @IgnoreExtraProperties

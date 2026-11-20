@@ -136,6 +136,41 @@
     <string name="reader_select_file_again">Select File Again</string>
     <string name="reader_add_to_library">Add to MyBooks Library</string>
     <string name="reader_add_to_library_short">Save Book</string>
+    <string name="reader_goto_page_title">Jump to Page / Chapter</string>
+    <string name="reader_goto_page_hint">Enter number (1–%1$d)</string>
+    <string name="reader_goto_action">Go</string>
+    <string name="reader_pdf_scroll_mode">PDF Layout</string>
+    <string name="reader_pdf_single_page">Single Page</string>
+    <string name="reader_pdf_continuous">Vertical Scroll</string>
+    <string name="reader_reflow_mode">Page Turning</string>
+    <string name="reader_reflow_paginated">Paginated Tap</string>
+    <string name="reader_reflow_continuous">Continuous Scroll</string>
+    <string name="reader_tap_zones">Tap Zones</string>
+    <string name="reader_tap_standard">Standard</string>
+    <string name="reader_tap_left_handed">Left-Handed</string>
+    <string name="reader_tap_center_only">Center Toggle Only</string>
+    <string name="reader_tap_off">Off</string>
+    <string name="reader_reduced_animation">Reduced Page Animation</string>
+    <string name="reader_profiles_title">Quick Profiles</string>
+    <string name="reader_profile_comfortable">Comfortable</string>
+    <string name="reader_profile_night">Night</string>
+    <string name="reader_profile_study">Study</string>
+    <string name="reader_read_aloud">Read Aloud</string>
+    <string name="reader_tts_pause">Pause</string>
+    <string name="reader_tts_resume">Resume</string>
+    <string name="reader_tts_stop">Stop</string>
+    <string name="reader_tts_chunk_progress">Segment %1$d / %2$d</string>
+    <string name="reader_tts_no_pdf_text">No embedded text layer found on this page. Run Offline OCR first to listen to scanned pages.</string>
+    <string name="reader_ocr_action">Offline OCR</string>
+    <string name="reader_ocr_title">Offline Page OCR</string>
+    <string name="reader_ocr_scan_page">Scan Current Page</string>
+    <string name="reader_ocr_scan_book">Scan Up to 20 Pages</string>
+    <string name="reader_ocr_scanning">Scanning page %1$d…</string>
+    <string name="reader_ocr_disclaimer">Runs 100% offline using ML Kit Latin OCR. Best for English/Latin print scans; accuracy may vary on noisy pages or non-Latin scripts.</string>
+    <string name="reader_ocr_empty">No text recognized yet. Tap Scan Current Page to extract text for searching or Read Aloud.</string>
+    <string name="reader_highlight_color">Highlight Color</string>
+    <string name="reader_prev_chapter">Previous Chapter</string>
+    <string name="reader_next_chapter">Next Chapter</string>
 
     <!-- Bookmarks & Notes -->
     <string name="bookmarks_title">Bookmarks &amp; Notes</string>
@@ -317,4 +352,95 @@
     <string name="restore_success">Restore complete: %1$d books, %2$d bookmarks, %3$d notes processed.</string>
     <string name="restore_invalid_archive">Invalid or unsafe backup archive. Existing data was not modified.</string>
     <string name="backup_community_note">Note: Online Community posts and account profiles are not stored in local backups.</string>
+
+    <!-- Reminders & Notifications -->
+    <string name="reminder_notification_body">Time for your daily reading session in MyBooks.</string>
+    <string name="reminder_channel_name">Daily Reading Reminders</string>
+    <string name="reminder_channel_desc">Scheduled daily reminders to continue reading.</string>
+
+    <!-- Stage 4 Home Productivity -->
+    <string name="home_streak_days">%1$d day streak</string>
+    <string name="home_streak_best">Best: %1$dd</string>
+    <string name="home_daily_goal_title">Today\'s Reading Goal</string>
+    <string name="home_daily_goal_progress">%1$d / %2$d min</string>
+    <string name="home_focus_timer_title">Focus Reading Timer</string>
+    <string name="home_focus_timer_start">Start Focus</string>
+    <string name="home_focus_timer_pause">Pause</string>
+    <string name="home_focus_timer_resume">Resume</string>
+    <string name="home_focus_timer_stop">Finish &amp; Save</string>
+    <string name="home_est_minutes_left">Est. ~%1$d min left</string>
+    <string name="home_break_alert_title">Time for a short break</string>
+    <string name="home_break_alert_message">You\'ve been reading continuously. Rest your eyes for a moment.</string>
+    <string name="home_break_dismiss">Got it</string>
+
+    <!-- Stage 4 Library Upgrades -->
+    <string name="library_status_all">All Statuses</string>
+    <string name="library_status_want_to_read">Want to Read</string>
+    <string name="library_status_currently_reading">Reading</string>
+    <string name="library_status_finished">Finished</string>
+    <string name="library_smart_unread">Unread</string>
+    <string name="library_smart_recently_opened">Recent</string>
+    <string name="library_smart_recently_added">Newly Added</string>
+    <string name="library_smart_annotated">Has Notes</string>
+    <string name="library_search_history_title">Recent searches</string>
+    <string name="library_search_inside_books">Search inside book text</string>
+    <string name="library_search_inside_running">Searching document contents…</string>
+    <string name="library_search_inside_no_hits">No matching passages found inside your books.</string>
+    <string name="library_trash_title">Recently Deleted</string>
+    <string name="library_trash_empty">Trash is empty</string>
+    <string name="library_trash_restore">Restore</string>
+    <string name="library_trash_delete_forever">Delete Forever</string>
+    <string name="library_move_to_trash">Move to Trash</string>
+    <string name="library_moved_to_trash">Moved to Recently Deleted</string>
+    <string name="library_restored_from_trash">Book restored to My Library</string>
+    <string name="library_reassign_category_label">Reassign books when deleting</string>
+    <string name="library_reassign_uncategorized">Uncategorized</string>
+    <string name="library_manage_collections_title">Manage Collections</string>
+    <string name="library_edit_collection">Edit Collection</string>
+    <string name="library_collection_desc_hint">Description (optional)</string>
+    <string name="library_no_collections">No collections yet</string>
+    <string name="library_set_reading_status">Reading Status</string>
+
+    <!-- Stage 4 Bookmarks Export -->
+    <string name="bookmarks_export_button">Export</string>
+    <string name="bookmarks_export_md">Export as Markdown (.md)</string>
+    <string name="bookmarks_export_json">Export as JSON (.json)</string>
+    <string name="bookmarks_export_success">Exported %1$d items successfully</string>
+    <string name="bookmarks_export_failed">Export failed</string>
+
+    <!-- Stage 4 Settings Productivity & Breakdown -->
+    <string name="settings_section_productivity">Reading Goals &amp; Timer</string>
+    <string name="settings_daily_goal_label">Daily Goal (minutes)</string>
+    <string name="settings_reading_speed_wpm">Reading Speed (%1$d WPM)</string>
+    <string name="settings_streak_summary">Current: %1$d days • Best: %2$d days • Total: %3$d min</string>
+    <string name="settings_14_day_calendar">Last 14 Days Activity</string>
+    <string name="settings_recent_sessions">Recent Reading Sessions</string>
+    <string name="settings_no_sessions">No reading sessions recorded yet.</string>
+    <string name="settings_break_reminder">Break Reminder</string>
+    <string name="settings_break_off">Off</string>
+    <string name="settings_break_minutes">%1$d min</string>
+    <string name="settings_daily_reminder">Daily Reading Reminder</string>
+    <string name="settings_reminder_time">Reminder time: %1$02d:%2$02d</string>
+    <string name="settings_notification_denied">Notification permission denied. Reminders remain off.</string>
+    <string name="settings_redownload_sound">Redownload Sound</string>
+    <string name="settings_storage_breakdown_books">Imported Books: %1$s</string>
+    <string name="settings_storage_breakdown_covers">Covers: %1$s</string>
+    <string name="settings_storage_breakdown_audio">Audio Assets: %1$s</string>
+    <string name="settings_last_backup_none">No local backup recorded yet.</string>
+    <string name="settings_last_backup_at">Last backup: %1$s (%2$s)</string>
+    <string name="settings_privacy_dashboard">View Privacy Details</string>
+    <string name="settings_privacy_dialog_title">Privacy &amp; Local-First Guarantee</string>
+    <string name="settings_privacy_dialog_body">MyBooks stores your imported books, covers, reading progress, bookmarks, notes, highlights, and reading sessions strictly on your device. No account or PIN/biometric lock is required to read your library. Community features are completely optional and only communicate with Firebase when you sign in with Google.</string>
+
+    <!-- Stage 5 Community -->
+    <string name="community_like_action">Like</string>
+    <string name="community_search_hint">Search posts or members</string>
+    <string name="community_block_user">Block User</string>
+    <string name="community_unblock_user">Unblock</string>
+    <string name="community_blocked_users_title">Blocked Users</string>
+    <string name="community_blocked_users_empty">You haven\'t blocked anyone.</string>
+    <string name="community_block_confirm">Block %1$s? You will no longer see their posts or comments.</string>
+    <string name="community_user_blocked">User blocked. Their posts and comments are now hidden.</string>
+    <string name="community_user_unblocked">User unblocked.</string>
+    <string name="community_search_no_results">No matching posts or members found.</string>
 </resources>

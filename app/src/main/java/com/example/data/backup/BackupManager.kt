@@ -13,6 +13,8 @@ import com.example.data.local.entity.CollectionEntity
 import com.example.data.local.entity.HighlightEntity
 import com.example.data.local.entity.NoteEntity
 import com.example.data.local.entity.ReadingProgressEntity
+import com.example.data.local.entity.ReadingSessionEntity
+import com.example.data.local.entity.ReadingStatus
 import com.example.data.local.entity.TagEntity
 import com.example.data.preferences.UserPreferences
 import com.example.data.preferences.UserPreferencesRepository
@@ -51,11 +53,12 @@ data class BackupManifest(
     val bookmarkCount: Int = 0,
     val noteCount: Int = 0,
     val highlightCount: Int = 0,
+    val readingSessionCount: Int = 0,
     val sha256Checksums: Map<String, String> = emptyMap(),
     val excludedFiles: List<String> = emptyList()
 ) {
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
     }
 }
 
@@ -72,6 +75,7 @@ data class BackupLibraryPayload(
     val bookmarks: List<BookmarkEntity> = emptyList(),
     val highlights: List<HighlightEntity> = emptyList(),
     val notes: List<NoteEntity> = emptyList(),
+    val readingSessions: List<ReadingSessionEntity> = emptyList(),
     val preferences: UserPreferences = UserPreferences(),
     val includedBookFiles: Map<String, String> = emptyMap(), // bookId -> zip entry path
     val includedCoverFiles: Map<String, String> = emptyMap(), // bookId -> zip entry path
@@ -118,7 +122,7 @@ class BackupManager(
         preferences: UserPreferences
     ): Result<BackupCreateResult> = withContext(Dispatchers.IO) {
         try {
-            val allBooks = libraryDao.getAllBooksSnapshot()
+            val allBooks = libraryDao.getActiveBooksSnapshot()
             val targetBooks = when (mode) {
                 BackupMode.METADATA_ONLY -> allBooks
                 BackupMode.SELECTED_BOOKS -> allBooks.filter { it.id in selectedBookIds }
@@ -135,6 +139,7 @@ class BackupManager(
             val bookmarks = annotationDao.getAllBookmarksSnapshot().filter { it.bookId in targetBookIds }
             val highlights = annotationDao.getAllHighlightsSnapshot().filter { it.bookId in targetBookIds }
             val notes = annotationDao.getAllNotesSnapshot().filter { it.bookId == null || it.bookId in targetBookIds }
+            val sessions = libraryDao.getAllReadingSessionsSnapshot().filter { it.bookId == null || it.bookId in targetBookIds }
 
             val checksums = mutableMapOf<String, String>()
             val excludedFiles = mutableListOf<String>()
@@ -220,6 +225,7 @@ class BackupManager(
                     bookmarks = bookmarks,
                     highlights = highlights,
                     notes = notes,
+                    readingSessions = sessions,
                     preferences = preferences,
                     includedBookFiles = includedBookFiles,
                     includedCoverFiles = includedCoverFiles,
@@ -239,6 +245,7 @@ class BackupManager(
                     bookmarkCount = bookmarks.size,
                     noteCount = notes.size,
                     highlightCount = highlights.size,
+                    readingSessionCount = sessions.size,
                     sha256Checksums = checksums,
                     excludedFiles = excludedFiles
                 )
@@ -255,6 +262,9 @@ class BackupManager(
                 return@withContext Result.failure(IllegalStateException("Cannot write to destination URI"))
             }
             tmpZip.delete()
+            val backupNow = System.currentTimeMillis()
+            val summaryText = "${mode.name}: ${targetBooks.size} books, ${notes.size} notes"
+            preferencesRepository.recordLastBackup(backupNow, summaryText)
             Result.success(BackupCreateResult(targetBooks.size, excludedFiles))
         } catch (e: Exception) {
             Result.failure(e)
@@ -460,6 +470,15 @@ class BackupManager(
                 }
                 annotationDao.upsertNotes(notesToSave)
                 notesProcessed = notesToSave.size
+
+                val sessionsToSave = payload.readingSessions.mapNotNull { session ->
+                    val mappedBook = session.bookId?.let { bookIdRemap[it] ?: return@mapNotNull null }
+                    val newId = if (duplicatePolicy == DuplicatePolicy.KEEP_BOTH) UUID.randomUUID().toString() else session.id
+                    session.copy(id = newId, bookId = mappedBook)
+                }
+                if (sessionsToSave.isNotEmpty()) {
+                    libraryDao.upsertReadingSessions(sessionsToSave)
+                }
             }
 
             preferencesRepository.restoreFromBackup(
@@ -483,8 +502,25 @@ class BackupManager(
     }
 
     private fun migratePayloadIfNeeded(payload: BackupLibraryPayload): BackupLibraryPayload {
-        // Explicit migration hook for future backup schema versions
-        return payload
+        if (payload.schemaVersion >= BackupManifest.CURRENT_SCHEMA_VERSION) return payload
+        // Migrate v1 -> v2: infer readingStatusName from readingProgress if defaulted, keep non-deleted flags clean
+        val migratedBooks = payload.books.map { book ->
+            val inferredStatus = when {
+                book.readingProgress >= 0.99f -> ReadingStatus.FINISHED.name
+                book.readingProgress > 0f && book.readingStatusName == ReadingStatus.WANT_TO_READ.name ->
+                    ReadingStatus.CURRENTLY_READING.name
+                else -> book.readingStatusName
+            }
+            book.copy(
+                readingStatusName = inferredStatus,
+                isDeleted = false,
+                deletedAtEpochMs = null
+            )
+        }
+        return payload.copy(
+            schemaVersion = BackupManifest.CURRENT_SCHEMA_VERSION,
+            books = migratedBooks
+        )
     }
 
     private fun sha256(bytes: ByteArray): String {

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,14 +32,20 @@ import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.AddComment
 import androidx.compose.material.icons.rounded.AdminPanelSettings
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Gavel
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,6 +53,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -110,6 +119,12 @@ private data class PendingReportTarget(
     val targetId: String,
     val summary: String,
     val parentPostId: String = ""
+)
+
+private data class PendingBlockTarget(
+    val uid: String,
+    val displayName: String,
+    val photoUrl: String
 )
 
 @Composable
@@ -406,6 +421,9 @@ private fun AuthenticatedCommunityFeed(
     val commentsState by viewModel.activePostCommentsState.collectAsStateWithLifecycle()
     val isTrustedAdmin by viewModel.isTrustedAdmin.collectAsStateWithLifecycle()
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val likedPostIds by viewModel.likedPostIds.collectAsStateWithLifecycle()
+    val blockedUsers by viewModel.blockedUsersState.collectAsStateWithLifecycle()
 
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var editingPost by remember { mutableStateOf<CommunityPost?>(null) }
@@ -413,8 +431,10 @@ private fun AuthenticatedCommunityFeed(
     var activePostForComments by remember { mutableStateOf<CommunityPost?>(null) }
     var showRulesDialog by remember { mutableStateOf(false) }
     var showAdminSheet by remember { mutableStateOf(false) }
+    var showBlockedUsersDialog by remember { mutableStateOf(false) }
     var selectedProfile by remember { mutableStateOf<CommunityUser?>(null) }
     var reportTarget by remember { mutableStateOf<PendingReportTarget?>(null) }
+    var pendingBlockTarget by remember { mutableStateOf<PendingBlockTarget?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -452,9 +472,11 @@ private fun AuthenticatedCommunityFeed(
         modifier = modifier
             .fillMaxSize()
             .testTag("community_screen"),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Column {
                         Text(
@@ -581,6 +603,42 @@ private fun AuthenticatedCommunityFeed(
                 }
             }
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = viewModel::setSearchQuery,
+                    placeholder = { Text(stringResource(R.string.community_search_hint)) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.action_clear))
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("community_search_input")
+                )
+                IconButton(
+                    onClick = { showBlockedUsersDialog = true },
+                    modifier = Modifier.testTag("community_blocked_users_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Block,
+                        contentDescription = stringResource(R.string.community_blocked_users_title)
+                    )
+                }
+            }
+
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
@@ -626,7 +684,10 @@ private fun AuthenticatedCommunityFeed(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = stringResource(R.string.community_empty_feed),
+                                    text = stringResource(
+                                        if (searchQuery.isNotBlank()) R.string.community_search_no_results
+                                        else R.string.community_empty_feed
+                                    ),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -644,6 +705,7 @@ private fun AuthenticatedCommunityFeed(
                                         post = post,
                                         isOwnPost = post.authorUid == firebaseUser.uid,
                                         canEditOwn = profile?.isWriteBlocked != true,
+                                        isLiked = post.id in likedPostIds,
                                         onAuthorClick = {
                                             openAuthorProfile(
                                                 post.authorUid,
@@ -653,6 +715,7 @@ private fun AuthenticatedCommunityFeed(
                                             )
                                         },
                                         onOpenDriveLink = openDriveUrl,
+                                        onToggleLike = { viewModel.togglePostLike(post.id) },
                                         onOpenComments = {
                                             activePostForComments = post
                                             viewModel.openPostComments(post.id)
@@ -664,6 +727,13 @@ private fun AuthenticatedCommunityFeed(
                                                 targetType = "post",
                                                 targetId = post.id,
                                                 summary = post.content.take(100)
+                                            )
+                                        },
+                                        onBlockAuthor = {
+                                            pendingBlockTarget = PendingBlockTarget(
+                                                uid = post.authorUid,
+                                                displayName = post.authorName,
+                                                photoUrl = post.authorPhotoUrl
                                             )
                                         }
                                     )
@@ -786,6 +856,10 @@ private fun AuthenticatedCommunityFeed(
                 selectedProfile = null
                 onSignOut()
             },
+            onOpenBlockedUsers = {
+                selectedProfile = null
+                showBlockedUsersDialog = true
+            },
             onReportProfile = {
                 selectedProfile = null
                 reportTarget = PendingReportTarget(
@@ -793,7 +867,47 @@ private fun AuthenticatedCommunityFeed(
                     targetId = targetUser.uid,
                     summary = targetUser.displayName
                 )
+            },
+            onBlockUser = {
+                selectedProfile = null
+                pendingBlockTarget = PendingBlockTarget(
+                    uid = targetUser.uid,
+                    displayName = targetUser.displayName,
+                    photoUrl = targetUser.photoUrl
+                )
             }
+        )
+    }
+
+    pendingBlockTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingBlockTarget = null },
+            title = { Text(stringResource(R.string.community_block_user)) },
+            text = { Text(stringResource(R.string.community_block_confirm, target.displayName)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.blockUser(target.uid, target.displayName, target.photoUrl)
+                        pendingBlockTarget = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.community_block_user))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingBlockTarget = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    if (showBlockedUsersDialog) {
+        BlockedUsersDialog(
+            blockedUsers = blockedUsers,
+            onUnblock = { uid -> viewModel.unblockUser(uid) },
+            onDismiss = { showBlockedUsersDialog = false }
         )
     }
 
@@ -939,14 +1053,18 @@ private fun CommunityPostCard(
     post: CommunityPost,
     isOwnPost: Boolean,
     canEditOwn: Boolean,
+    isLiked: Boolean,
     onAuthorClick: () -> Unit,
     onOpenDriveLink: (String) -> Unit,
+    onToggleLike: () -> Unit,
     onOpenComments: () -> Unit,
     onEditOwn: () -> Unit,
     onDeleteOwn: () -> Unit,
-    onReportPost: () -> Unit
+    onReportPost: () -> Unit,
+    onBlockAuthor: () -> Unit
 ) {
     val isAdminAuthor = post.badge == BadgeType.RED_ADMIN
+    var showMoreMenu by remember { mutableStateOf(false) }
     val formattedDate = remember(post.createdAt) {
         post.createdAt?.toDate()?.let { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(it) }.orEmpty()
     }
@@ -1012,8 +1130,34 @@ private fun CommunityPostCard(
                             Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.action_delete))
                         }
                     } else {
-                        IconButton(onClick = onReportPost) {
-                            Icon(Icons.Rounded.Flag, contentDescription = stringResource(R.string.community_report_post))
+                        Box {
+                            IconButton(
+                                onClick = { showMoreMenu = true },
+                                modifier = Modifier.testTag("community_post_more_button")
+                            ) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.community_report_post))
+                            }
+                            DropdownMenu(
+                                expanded = showMoreMenu,
+                                onDismissRequest = { showMoreMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.community_report_post)) },
+                                    leadingIcon = { Icon(Icons.Rounded.Flag, contentDescription = null) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onReportPost()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.community_block_user)) },
+                                    leadingIcon = { Icon(Icons.Rounded.Block, contentDescription = null) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onBlockAuthor()
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -1079,8 +1223,31 @@ private fun CommunityPostCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                TextButton(
+                    onClick = onToggleLike,
+                    enabled = canEditOwn,
+                    modifier = Modifier.testTag("community_like_post_button")
+                ) {
+                    Icon(
+                        imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = stringResource(R.string.community_like_action),
+                        tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (post.likeCount > 0L) {
+                            "${stringResource(R.string.community_like_action)} (${post.likeCount})"
+                        } else {
+                            stringResource(R.string.community_like_action)
+                        },
+                        color = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 TextButton(
                     onClick = onOpenComments,
                     modifier = Modifier.testTag("community_open_comments_button")
